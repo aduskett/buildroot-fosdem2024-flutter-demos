@@ -1,0 +1,179 @@
+From 831e5387ed6921636e4735d2f524d7ea50370540 Mon Sep 17 00:00:00 2001
+From: Adam Duskett <adam.duskett@amarulasolutions.com>
+Date: Wed, 24 Jan 2024 13:07:01 -0700
+Subject: [PATCH] package/pkg-flutter: new infrastructure
+
+Add a new infrastructure to ease the development of packages that use Flutter
+and Dart as their build system.
+
+Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
+---
+ package/Makefile.in    |   1 +
+ package/pkg-flutter.mk | 146 +++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 147 insertions(+)
+ create mode 100644 package/pkg-flutter.mk
+
+diff --git a/package/Makefile.in b/package/Makefile.in
+index 3e276d23d6..60126fdfa5 100644
+--- a/package/Makefile.in
++++ b/package/Makefile.in
+@@ -453,3 +453,4 @@ include package/pkg-golang.mk
+ include package/pkg-meson.mk
+ include package/pkg-qmake.mk
+ include package/pkg-cargo.mk
++include package/pkg-flutter.mk
+diff --git a/package/pkg-flutter.mk b/package/pkg-flutter.mk
+new file mode 100644
+index 0000000000..0afe876e7c
+--- /dev/null
++++ b/package/pkg-flutter.mk
+@@ -0,0 +1,146 @@
++################################################################################
++# flutter package infrastructure
++#
++# This file implements an infrastructure that eases development of package
++# .mk files for flutter packages. It should be used for all flutter packages.
++#
++# See the Buildroot documentation for details on the usage of this
++# infrastructure
++#
++# In terms of implementation, this flutter infrastructure requires the .mk file
++# to only specify metadata information about the package: name, version,
++# download URL, etc.
++#
++# We still allow the package .mk file to override what the different steps
++# are doing, if needed. For example, if <PKG>_BUILD_CMDS is already defined,
++# it is used as the list of commands to perform to build the package,
++# instead of the default flutter behavior. The package can also define some
++# post operation hooks.
++#
++################################################################################
++
++PKG_FLUTTER_DART_REGISTRANT_BUILD_OPTS += \
++	$(if $(wildcard $($(PKG)_SRCDIR)/.dart_tool/flutter_build/dart_plugin_registrant.dart),\
++		-Dflutter.dart_plugin_registrant=file://$($(PKG)_SRCDIR)/.dart_tool/flutter_build/dart_plugin_registrant.dart \
++		--source file://$($(PKG)_SRCDIR)/.dart_tool/flutter_build/dart_plugin_registrant.dart \
++		--source package:flutter/src/dart_plugin_registrant.dart \
++	)
++
++PKG_FLUTTER_DART_NATIVE_ASSETS_YAML_OPTS += \
++	$(if $(wildcard $($(PKG)_SRCDIR)/.dart_tool/flutter_build/*/native_assets.yaml),\
++		--native-assets $($(PKG)_SRCDIR)/.dart_tool/flutter_build/*/native_assets.yaml \
++	)
++
++# A pubspec.yaml file must exist. As such, if this command returns an empty
++# string, the build will fail, which is expected and the correct thing to do.
++# The name field must be on the first line.
++# See: https://docs.flutter.dev/tools/pubspec
++PKG_FLUTTER_PACKAGE_NAME ?= `{ [ -e $($(PKG)_SRCDIR)/pubspec.yaml ] && grep -m1 'name:' $($(PKG)_SRCDIR)/pubspec.yaml |cut -f 2 -d' '; }`
++
++################################################################################
++# inner-flutter-package -- defines how the configuration, compilation and
++# installation of a flutter package should be done, implements a few hooks
++# to tune the build process for flutter specifities and calls the generic
++# package infrastructure to generate the necessary make targets
++#
++#  argument 1 is the lowercase package name
++#  argument 2 is the uppercase package name, including a HOST_ prefix
++#             for host packages
++#  argument 3 is the uppercase package name, without the HOST_ prefix
++#             for host packages
++#  argument 4 is the type (target or host) which is unused.
++#
++################################################################################
++
++define inner-flutter-package
++
++# We need host-flutter-sdk-bin to compile flutter applications and
++# flutter-engine to run the flutter application
++$(2)_DEPENDENCIES += host-flutter-sdk-bin flutter-engine
++
++# Most flutter packages use main.dart as the entry file. However, this is not
++# a strict requirement.
++$(2)_ENTRY_FILE ?= main.dart
++
++# If a user fails to pass the --obfuscate flag to gen_snapshsot
++# when using the dart_plugin_registrant.dart file, their application may fail
++# to start However, the obfuscate flag hides function and class names
++# in compiled Dart code, and there are some cases when a user should avoid
++# using the flag. For example, when using the runtimeType API:
++# https://api.flutter.dev/flutter/dart-core/Object/runtimeType.html.
++$(2)_OBFUSCATE ?= YES
++
++#
++# Configure step. Only define it if not already defined by the package
++# .mk file.
++#
++ifndef $(2)_CONFIGURE_CMDS
++define $(2)_CONFIGURE_CMDS
++	cd $$($$(PKG)_SRCDIR) && \
++	$$(HOST_FLUTTER_SDK_BIN_FLUTTER) clean && \
++	$$(HOST_FLUTTER_SDK_BIN_FLUTTER) pub get && \
++	$$(HOST_FLUTTER_SDK_BIN_FLUTTER) build bundle
++	$$($(2)_CONF_OPTS)
++endef
++endif
++
++#
++# Build step. Only define it if not already defined by the package .mk
++# file.
++#
++ifndef $(2)_BUILD_CMDS
++define $(2)_BUILD_CMDS
++	cd $$($$(PKG)_SRCDIR) && \
++	$$(HOST_FLUTTER_SDK_BIN_DART_BIN) \
++	$$(PKG_FLUTTER_DART_REGISTRANT_BUILD_OPTS) \
++	$$(PKG_FLUTTER_DART_NATIVE_ASSETS_YAML_OPTS) \
++	package:$$(PKG_FLUTTER_PACKAGE_NAME)/$$($(2)_ENTRY_FILE) && \
++	$$(HOST_FLUTTER_SDK_BIN_ENV) $$(FLUTTER_ENGINE_GEN_SNAPSHOT) \
++	$(PKG_FLUTTER_GEN_SNAPSHOT_OPTS) \
++	$$(if $$(filter YES,$$($(2)_OBFUSCATE)),--obfuscate) \
++	--deterministic \
++	--snapshot_kind=app-aot-elf \
++	--elf=libapp.so \
++	.dart_tool/flutter_build/*/app.dill
++endef
++endif
++
++ifndef $(2)_TARGET_INSTALL_DIR
++ ifdef $(2)_TARGET_INSTALL_DIR
++  $(2)_TARGET_INSTALL_DIR = $$($(2)_TARGET_INSTALL_DIR)
++ else
++  $(2)_TARGET_INSTALL_DIR ?= $$(TARGET_DIR)/usr/share/flutter/$$(PKG_FLUTTER_PACKAGE_NAME)/$$(FLUTTER_ENGINE_RUNTIME_MODE)
++ endif
++endif
++
++#
++# Target installation step. Only define it if not already defined by
++# the package .mk file.
++#
++# If kernel_blob.bin exists inside the flutter_assets directory, then the
++# application source code can be extracted with nothing more than apktool.
++# Not only is this a security risk, it's also redundant and a waste of space.
++# Touch a blank kernel_blob.bin file in case some applicaitons check for it.
++ifndef $(2)_INSTALL_TARGET_CMDS
++define $(2)_INSTALL_TARGET_CMDS
++	mkdir -p $$($(2)_TARGET_INSTALL_DIR)/{data,lib}
++	cp -dprf $$($$(PKG)_SRCDIR)/build/flutter_assets $$($(2)_TARGET_INSTALL_DIR)/data/
++	$$(INSTALL) -D -m 0755 $$($$(PKG)_SRCDIR)/libapp.so $$($(2)_TARGET_INSTALL_DIR)/lib/libapp.so
++	ln -sf /usr/share/flutter/$$(FLUTTER_ENGINE_RUNTIME_MODE)/data/icudtl.dat $$($(2)_TARGET_INSTALL_DIR)/data/
++	ln -sf /usr/lib/libflutter_engine.so $$($(2)_TARGET_INSTALL_DIR)/lib/
++	$$(RM) $$($(2)_TARGET_INSTALL_DIR)/data/flutter_assets/kernel_blob.bin
++	touch $$($(2)_TARGET_INSTALL_DIR)/data/flutter_assets/kernel_blob.bin
++endef
++endif
++
++# Call the generic package infrastructure to generate the necessary
++# make targets
++$(call inner-generic-package,$(1),$(2),$(3),$(4))
++
++endef
++
++###############################################################################
++# flutter-package -- the target generator macro for FLUTTER packages
++###############################################################################
++
++flutter-package = $(call inner-flutter-package,$(pkgname),$(call UPPERCASE,$(pkgname)),$(call UPPERCASE,$(pkgname)),target)
+-- 
+2.43.0
+

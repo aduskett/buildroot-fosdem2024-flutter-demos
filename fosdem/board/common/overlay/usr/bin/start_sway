@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+
+mkdir -p /tmp/sway
+export XDG_RUNTIME_DIR=/tmp/sway
+sway

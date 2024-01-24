@@ -1,0 +1,6 @@
+# By default, bcm2712_defconfig selects 16K page sizes to allow running ARM32
+# binaries. However, there are two issues with this:
+#   1) Buildroot has no need to run ARM32 binaries, as everything is compiled for AARCH64.
+#   2) All of the pre-compiled toolchains are built using 4K page sizes.
+# As such, revert back to 4K page sizes.
+CONFIG_ARM64_4K_PAGES=y
