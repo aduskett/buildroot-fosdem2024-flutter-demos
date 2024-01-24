@@ -1,0 +1,1034 @@
+From cccfa2c593243e813c001bb4ce8d9ffcdc09ac5f Mon Sep 17 00:00:00 2001
+From: Adam Duskett <adam.duskett@amarulasolutions.com>
+Date: Tue, 23 Jan 2024 10:31:52 -0700
+Subject: [PATCH] flutter packages updates
+
+This patch brings all the flutter packages up to date with what
+is currently in the buildroot master branch as of commit 3b8b1125.
+
+Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
+---
+ package/Config.in                             |   1 +
+ package/depot-tools/depot-tools.hash          |   2 +-
+ package/depot-tools/depot-tools.mk            |   2 +-
+ package/flutter-engine/Config.in              |  35 ++-
+ package/flutter-engine/flutter-engine.mk      |   6 +-
+ package/flutter-gallery/flutter-gallery.mk    |  24 +-
+ ...er_surface-properly-fallback-to-surf.patch |  59 ----
+ package/flutter-pi/Config.in                  |  42 ++-
+ package/flutter-pi/flutter-pi.hash            |   2 +-
+ package/flutter-pi/flutter-pi.mk              |  16 +-
+ package/flutter-sdk-bin/flutter-sdk-bin.hash  |   2 +-
+ package/flutter-sdk-bin/flutter-sdk-bin.mk    |  29 +-
+ ...ers-to-the-audio-players-and-keyboar.patch | 104 +++++++
+ package/ivi-homescreen/Config.in              | 270 ++++++++++++++++++
+ package/ivi-homescreen/ivi-homescreen.hash    |  21 ++
+ package/ivi-homescreen/ivi-homescreen.mk      | 136 +++++++++
+ 16 files changed, 657 insertions(+), 94 deletions(-)
+ delete mode 100644 package/flutter-pi/0001-src-egl_gbm_render_surface-properly-fallback-to-surf.patch
+ create mode 100644 package/ivi-homescreen/0001-add-missing-headers-to-the-audio-players-and-keyboar.patch
+ create mode 100644 package/ivi-homescreen/Config.in
+ create mode 100644 package/ivi-homescreen/ivi-homescreen.hash
+ create mode 100644 package/ivi-homescreen/ivi-homescreen.mk
+
+diff --git a/package/Config.in b/package/Config.in
+index f003f3dd91..7feb022e33 100644
+--- a/package/Config.in
++++ b/package/Config.in
+@@ -320,6 +320,7 @@ comment "Graphic applications"
+ 	source "package/glmark2/Config.in"
+ 	source "package/glslsandbox-player/Config.in"
+ 	source "package/gnuplot/Config.in"
++	source "package/ivi-homescreen/Config.in"
+ 	source "package/jhead/Config.in"
+ 	source "package/kmscube/Config.in"
+ 	source "package/libva-utils/Config.in"
+diff --git a/package/depot-tools/depot-tools.hash b/package/depot-tools/depot-tools.hash
+index 2109096901..70218e4658 100644
+--- a/package/depot-tools/depot-tools.hash
++++ b/package/depot-tools/depot-tools.hash
+@@ -1,3 +1,3 @@
+ # Locally calculated
+-sha256  8e0bccdd6b1231f58d5453dc14a5e1d195295ac8d466dec34961e951e946b50b  depot-tools-4e87f5bfe244e903f712408ea68dc3c3a6fe2d00-br1.tar.gz
++sha256  5da23d7558975093c6a732f5743c7f224d16dd3f878a6a1b577b1b127a4098cc  depot-tools-8d14454ba4a35fd9d2483842b08815a2357ec86f-br1.tar.gz
+ sha256  984523ee987f4e8b72d61df37d8f1189a7077cd4b77e41a397e35593b297a29d  LICENSE
+diff --git a/package/depot-tools/depot-tools.mk b/package/depot-tools/depot-tools.mk
+index e3b840f29a..634258ffbb 100644
+--- a/package/depot-tools/depot-tools.mk
++++ b/package/depot-tools/depot-tools.mk
+@@ -4,7 +4,7 @@
+ #
+ ################################################################################
+ 
+-DEPOT_TOOLS_VERSION = 4e87f5bfe244e903f712408ea68dc3c3a6fe2d00
++DEPOT_TOOLS_VERSION = 8d14454ba4a35fd9d2483842b08815a2357ec86f
+ DEPOT_TOOLS_SITE = https://chromium.googlesource.com/chromium/tools/depot_tools
+ DEPOT_TOOLS_SITE_METHOD = git
+ DEPOT_TOOLS_LICENSE = BSD-3-Clause
+diff --git a/package/flutter-engine/Config.in b/package/flutter-engine/Config.in
+index 2ec5b90ffd..00bcd05cd4 100644
+--- a/package/flutter-engine/Config.in
++++ b/package/flutter-engine/Config.in
+@@ -11,7 +11,6 @@ config BR2_PACKAGE_FLUTTER_ENGINE
+ 	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
+ 	depends on BR2_TOOLCHAIN_USES_GLIBC
+ 	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_5
+-	depends on BR2_TOOLCHAIN_HAS_THREADS_NPTL # pthreads
+ 	depends on BR2_INSTALL_LIBSTDCPP
+ 	depends on !BR2_TOOLCHAIN_HAS_GCC_BUG_64735 # std::shared_future
+ 	depends on !BR2_STATIC_LIBS
+@@ -39,16 +38,40 @@ config BR2_PACKAGE_FLUTTER_ENGINE
+ 
+ 	  https://github.com/flutter/engine
+ 
++if BR2_PACKAGE_FLUTTER_ENGINE
++
++config FLUTTER_ENGINE_RUNTIME_MODE_PROFILE
++	bool "enable profiling"
++	help
++	  Some debugging ability is maintained—enough to profile your
++	  apps performance. Profile mode is disabled on the emulator
++	  and simulator, because their behavior is not representative
++	  of real performance. Profile mode is similar to release mode,
++	  with the following differences:
++
++	  - Some service extensions, such as the one that enables the
++	    performance overlay, are enabled.
++
++	  - Tracing is enabled, and tools supporting source-level
++	    debugging (such as DevTools) can connect to the process.
++
++	  If this option is left unselected, the global option
++	  BR2_ENABLE_RUNTIME_DEBUG determines whether to build Flutter
++	  in release or debug mode.
++
++	  https://docs.flutter.dev/testing/build-modes#profile
++
++endif
++
+ comment "flutter-engine needs an OpenGL or OpenGLES backend"
+ 	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
+ 	depends on !BR2_PACKAGE_HAS_LIBGL && !BR2_PACKAGE_HAS_LIBGLES
+ 
+-comment "flutter-engine needs a glibc toolchain w/ wchar, C++, gcc >= 5, dynamic library, host gcc >= 5, NPTL"
++comment "flutter-engine needs a glibc toolchain w/ wchar, C++, gcc >= 5, dynamic library, host gcc >= 5"
+ 	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
+-	depends on !BR2_TOOLCHAIN_USES_GLIBC || !BR2_TOOLCHAIN_HAS_THREADS_NPTL \
+-		|| !BR2_INSTALL_LIBSTDCPP || !BR2_TOOLCHAIN_GCC_AT_LEAST_5 \
+-		|| BR2_STATIC_LIBS || !BR2_USE_WCHAR \
+-		|| !BR2_HOST_GCC_AT_LEAST_5
++	depends on !BR2_TOOLCHAIN_USES_GLIBC || !BR2_INSTALL_LIBSTDCPP \
++		|| !BR2_TOOLCHAIN_GCC_AT_LEAST_5 || BR2_STATIC_LIBS \
++		|| !BR2_USE_WCHAR || !BR2_HOST_GCC_AT_LEAST_5
+ 
+ comment "flutter-engine needs a toolchain not affected by GCC bug 64735"
+ 	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
+diff --git a/package/flutter-engine/flutter-engine.mk b/package/flutter-engine/flutter-engine.mk
+index d31d435d79..d08274f546 100644
+--- a/package/flutter-engine/flutter-engine.mk
++++ b/package/flutter-engine/flutter-engine.mk
+@@ -21,7 +21,7 @@
+ #
+ # There is no hash provided, as the gn binary (used for configuration) relies
+ # on the .git directories. As such, a reproducible tarball is not possible.
+-FLUTTER_ENGINE_VERSION = 3.13.9
++FLUTTER_ENGINE_VERSION = 3.16.8
+ 
+ # There is nothing for Buildroot to download. This is handled by gclient.
+ FLUTTER_ENGINE_SITE =
+@@ -52,7 +52,9 @@ FLUTTER_ENGINE_TARGET_ARCH = x64
+ FLUTTER_ENGINE_TARGET_TRIPPLE = x86_64-unknown-linux-gnu
+ endif
+ 
+-ifeq ($(BR2_ENABLE_RUNTIME_DEBUG),y)
++ifeq ($(FLUTTER_ENGINE_RUNTIME_MODE_PROFILE),y)
++FLUTTER_ENGINE_RUNTIME_MODE=profile
++else ifeq ($(BR2_ENABLE_RUNTIME_DEBUG),y)
+ FLUTTER_ENGINE_RUNTIME_MODE=debug
+ else
+ FLUTTER_ENGINE_RUNTIME_MODE=release
+diff --git a/package/flutter-gallery/flutter-gallery.mk b/package/flutter-gallery/flutter-gallery.mk
+index 57a476b1ab..6b0954cb32 100644
+--- a/package/flutter-gallery/flutter-gallery.mk
++++ b/package/flutter-gallery/flutter-gallery.mk
+@@ -14,15 +14,25 @@ FLUTTER_GALLERY_DEPENDENCIES = \
+ 
+ FLUTTER_GALLERY_INSTALL_DIR = $(TARGET_DIR)/usr/share/flutter/gallery/$(FLUTTER_ENGINE_RUNTIME_MODE)
+ 
+-define FLUTTER_GALLERY_BUILD_CMDS
++define FLUTTER_GALLERY_CONFIGURE_CMDS
+ 	cd $(@D) && \
+ 		FLUTTER_RUNTIME_MODES=$(FLUTTER_ENGINE_RUNTIME_MODE) \
+ 		$(HOST_FLUTTER_SDK_BIN_FLUTTER) clean && \
+-		$(HOST_FLUTTER_SDK_BIN_FLUTTER) packages get && \
+-		$(HOST_FLUTTER_SDK_BIN_FLUTTER) build bundle && \
+-		$(HOST_FLUTTER_SDK_BIN_DART_BIN) package:gallery/main.dart && \
++		$(HOST_FLUTTER_SDK_BIN_FLUTTER) pub get && \
++		$(HOST_FLUTTER_SDK_BIN_FLUTTER) build bundle
++endef
++
++define FLUTTER_GALLERY_BUILD_CMDS
++	cd $(@D) && \
++		$(HOST_FLUTTER_SDK_BIN_DART_BIN) \
++			-Dflutter.dart_plugin_registrant=file://$(@D)/.dart_tool/flutter_build/dart_plugin_registrant.dart \
++			--source file://$(@D)/.dart_tool/flutter_build/dart_plugin_registrant.dart \
++			--source package:flutter/src/dart_plugin_registrant.dart \
++			--native-assets $(@D)/.dart_tool/flutter_build/*/native_assets.yaml \
++			package:gallery/main.dart && \
+ 		$(HOST_FLUTTER_SDK_BIN_ENV) $(FLUTTER_ENGINE_GEN_SNAPSHOT) \
+ 			--deterministic \
++			--obfuscate \
+ 			--snapshot_kind=app-aot-elf \
+ 			--elf=libapp.so \
+ 			.dart_tool/flutter_build/*/app.dill
+@@ -35,10 +45,12 @@ define FLUTTER_GALLERY_INSTALL_TARGET_CMDS
+ 	$(INSTALL) -D -m 0755 $(@D)/libapp.so \
+ 		$(FLUTTER_GALLERY_INSTALL_DIR)/lib/libapp.so
+ 
+-	ln -sf ../../../$(FLUTTER_ENGINE_RUNTIME_MODE)/data/icudtl.dat \
++	ln -sf /usr/share/flutter/$(FLUTTER_ENGINE_RUNTIME_MODE)/data/icudtl.dat \
+ 	$(FLUTTER_GALLERY_INSTALL_DIR)/data/
+ 
+-	ln -sf ../../../../../lib/libflutter_engine.so $(FLUTTER_GALLERY_INSTALL_DIR)/lib/
++	ln -sf /usr/lib/libflutter_engine.so $(FLUTTER_GALLERY_INSTALL_DIR)/lib/
++	$(RM) $(FLUTTER_GALLERY_INSTALL_DIR)/data/flutter_assets/kernel_blob.bin
++	touch $(FLUTTER_GALLERY_INSTALL_DIR)/data/flutter_assets/kernel_blob.bin
+ endef
+ 
+ $(eval $(generic-package))
+diff --git a/package/flutter-pi/0001-src-egl_gbm_render_surface-properly-fallback-to-surf.patch b/package/flutter-pi/0001-src-egl_gbm_render_surface-properly-fallback-to-surf.patch
+deleted file mode 100644
+index 7a1a49b3d4..0000000000
+--- a/package/flutter-pi/0001-src-egl_gbm_render_surface-properly-fallback-to-surf.patch
++++ /dev/null
+@@ -1,59 +0,0 @@
+-From 856f9849763535d62ed01b538ba23905875c93f4 Mon Sep 17 00:00:00 2001
+-From: "Yann E. MORIN" <yann.morin.1998@free.fr>
+-Date: Tue, 26 Sep 2023 20:31:17 +0200
+-Subject: [PATCH] src/egl_gbm_render_surface: properly fallback to surface with
+- no modifier
+-
+-In 869fa7fcfbeb, we added a fallback to be able to create an EGL sruface
+-when the driver do not support modifiers, like the llvmpipe software
+-renderer (or like some proprietary drivers, like the MALI ones), as
+-reported in #269 [0].
+-
+-However, in c6537673c9b6, there was a big overhaul of renderer
+-infrastructure. That commit lost the with-modifiers code path and only
+-kept the without-modifiers fallback one (i.e. it only kept the call to
+-gbm_surface_create(), not to gbm_surface_create_with_modifiers()).
+-
+-Then in b0d09f5032a4, the with-modifier code path was re-instated, but
+-in a way that made it exclusive with the without-modifiers one. That is,
+-the without-modifiers code path was not a fallback to when the other
+-failed.
+-
+-Re-instate the fallback mechanism as intiially implemented.
+-
+-[0] https://github.com/ardera/flutter-pi/issues/269
+-
+-Signed-off-by: Yann E. MORIN <yann.morin.1998@free.fr>
+-Upstream: https://github.com/ardera/flutter-pi/pull/367
+----
+- src/egl_gbm_render_surface.c | 6 ++++--
+- 1 file changed, 4 insertions(+), 2 deletions(-)
+-
+-diff --git a/src/egl_gbm_render_surface.c b/src/egl_gbm_render_surface.c
+-index ce9e5e7..8a58667 100644
+---- a/src/egl_gbm_render_surface.c
+-+++ b/src/egl_gbm_render_surface.c
+-@@ -146,6 +146,7 @@ static int egl_gbm_render_surface_init(
+-     }
+- #endif
+- 
+-+    gbm_surface = NULL;
+-     if (allowed_modifiers != NULL) {
+-         gbm_surface = gbm_surface_create_with_modifiers(
+-             gbm_device,
+-@@ -158,9 +159,10 @@ static int egl_gbm_render_surface_init(
+-         if (gbm_surface == NULL) {
+-             ok = errno;
+-             LOG_ERROR("Couldn't create GBM surface for rendering. gbm_surface_create_with_modifiers: %s\n", strerror(ok));
+--            return ok;
+-+            LOG_ERROR("Will retry without modifiers\n");
+-         }
+--    } else {
+-+    }
+-+    if (gbm_surface == NULL) {
+-         gbm_surface = gbm_surface_create(
+-             gbm_device,
+-             size.x,
+--- 
+-2.25.1
+-
+diff --git a/package/flutter-pi/Config.in b/package/flutter-pi/Config.in
+index ecebfad89b..bb0e3702c1 100644
+--- a/package/flutter-pi/Config.in
++++ b/package/flutter-pi/Config.in
+@@ -1,9 +1,20 @@
+ menuconfig BR2_PACKAGE_FLUTTER_PI
+ 	bool "flutter-pi"
+-	depends on BR2_PACKAGE_FLUTTER_ENGINE
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on BR2_HOST_GCC_AT_LEAST_5 # flutter-engine
++	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_5 # flutter-engine
++	depends on !BR2_TOOLCHAIN_HAS_GCC_BUG_64735 # flutter-engine
++	depends on BR2_TOOLCHAIN_USES_GLIBC # flutter-engine
++	depends on BR2_INSTALL_LIBSTDCPP # flutter-engine
++	depends on !BR2_STATIC_LIBS # flutter-engine, wayland
++	depends on BR2_USE_WCHAR # flutter-engine
++	depends on BR2_PACKAGE_HAS_LIBGL || BR2_PACKAGE_HAS_LIBGLES # flutter-engine
+ 	depends on BR2_PACKAGE_HAS_LIBGBM
+ 	depends on BR2_PACKAGE_SYSTEMD # Event loop and dbus support
+ 	depends on BR2_PACKAGE_HAS_UDEV # libinput
++	select BR2_PACKAGE_HOST_FLUTTER_SDK_BIN
++	select BR2_PACKAGE_FLUTTER_ENGINE
+ 	select BR2_PACKAGE_LIBDRM
+ 	select BR2_PACKAGE_LIBINPUT
+ 	select BR2_PACKAGE_LIBXKBCOMMON
+@@ -23,6 +34,17 @@ if BR2_PACKAGE_FLUTTER_PI
+ 
+ comment "plugins"
+ 
++config BR2_PACKAGE_FLUTTER_PI_CHARSET_CONVERTER_PLUGIN
++	bool "charset converter"
++	help
++	  Adds platform-side implementation of charset_converter plugin.
++
++	  Encode and decode charsets using platform built-in converter.
++	  This plugin saves app package size as you don't need external
++	  charset maps or whole libraries like iconv.
++
++	  https://pub.dev/packages/charset_converter
++
+ config BR2_PACKAGE_FLUTTER_PI_GSTREAMER_AUDIO_PLAYER_PLUGIN
+ 	bool "gstreamer audio player"
+ 	depends on BR2_PACKAGE_HAS_LIBGLES
+@@ -69,8 +91,22 @@ config BR2_PACKAGE_FLUTTER_PI_TEXT_INPUT_PLUGIN
+ 
+ endif
+ 
+-comment "flutter-pi needs flutter-engine"
+-	depends on !BR2_PACKAGE_FLUTTER_ENGINE
++comment "flutter-pi needs a glibc toolchain w/ wchar, C++, gcc >= 5, dynamic library, host gcc >= 5"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on !BR2_TOOLCHAIN_USES_GLIBC || !BR2_INSTALL_LIBSTDCPP \
++		|| !BR2_TOOLCHAIN_GCC_AT_LEAST_5 || BR2_STATIC_LIBS \
++		|| !BR2_USE_WCHAR || !BR2_HOST_GCC_AT_LEAST_5
++
++comment "flutter-pi needs a toolchain not affected by GCC bug 64735"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on BR2_TOOLCHAIN_HAS_GCC_BUG_64735
++
++comment "flutter-pi needs an OpenGL or OpenGLES backend"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on !BR2_PACKAGE_HAS_LIBGL && !BR2_PACKAGE_HAS_LIBGLES
+ 
+ comment "flutter-pi needs GBM, systemd, and udev"
+ 	depends on !BR2_PACKAGE_HAS_LIBGBM || \
+diff --git a/package/flutter-pi/flutter-pi.hash b/package/flutter-pi/flutter-pi.hash
+index f7148963a4..df47d666bd 100644
+--- a/package/flutter-pi/flutter-pi.hash
++++ b/package/flutter-pi/flutter-pi.hash
+@@ -1,3 +1,3 @@
+ # Locally calculated
+-sha256  e4af79c8f53c15913f52a83a221f099a2a750d023a0bc4560d0db6f15def79a2  flutter-pi-d62e84350d2869b3ec1dfb1af21bfe234c4b817f-br1.tar.gz
++sha256  6b11f260567a4589915cf29ce2ffa62b6f80414242a65c616f01983ae3a177b7  flutter-pi-75e72fef8e8ce65ec72a002c00d9c6db4d1479d3-br1.tar.gz
+ sha256  b34df9d3e1b4e5d1ba70b1740ec74b69f1189b44efd0c96b898b074ef8db1c70  LICENSE
+diff --git a/package/flutter-pi/flutter-pi.mk b/package/flutter-pi/flutter-pi.mk
+index 27f140c177..4d800c6862 100644
+--- a/package/flutter-pi/flutter-pi.mk
++++ b/package/flutter-pi/flutter-pi.mk
+@@ -4,7 +4,7 @@
+ #
+ ################################################################################
+ 
+-FLUTTER_PI_VERSION = d62e84350d2869b3ec1dfb1af21bfe234c4b817f
++FLUTTER_PI_VERSION = 75e72fef8e8ce65ec72a002c00d9c6db4d1479d3
+ FLUTTER_PI_SITE = https://github.com/ardera/flutter-pi.git
+ FLUTTER_PI_SITE_METHOD = git
+ FLUTTER_PI_LICENSE = MIT
+@@ -24,7 +24,6 @@ FLUTTER_PI_CONF_OPTS = \
+ 	-DENABLE_TESTS=OFF \
+ 	-DENABLE_TSAN=OFF \
+ 	-DENABLE_UBSAN=OFF \
+-	-DENABLE_VULKAN=OFF \
+ 	-DFILESYSTEM_LAYOUT=meta-flutter \
+ 	-DLINT_EGL_HEADERS=OFF \
+ 	-DTRY_BUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN=OFF \
+@@ -42,6 +41,12 @@ else
+ FLUTTER_PI_CONF_OPTS += -DLTO=OFF
+ endif
+ 
++ifeq ($(BR2_PACKAGE_FLUTTER_PI_CHARSET_CONVERTER_PLUGIN),y)
++FLUTTER_PI_CONF_OPTS += -DBUILD_CHARSET_CONVERTER_PLUGIN=ON
++else
++FLUTTER_PI_CONF_OPTS += -DBUILD_CHARSET_CONVERTER_PLUGIN=OFF
++endif
++
+ ifeq ($(BR2_PACKAGE_FLUTTER_PI_GSTREAMER_AUDIO_PLAYER_PLUGIN),y)
+ FLUTTER_PI_DEPENDENCIES += gstreamer1 gst1-plugins-base
+ FLUTTER_PI_CONF_OPTS += -DBUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN=ON
+@@ -69,6 +74,13 @@ else
+ FLUTTER_PI_CONF_OPTS += -DBUILD_TEXT_INPUT_PLUGIN=OFF
+ endif
+ 
++ifeq ($(BR2_PACKAGE_MESA3D_VULKAN_DRIVER)$(BR2_PACKAGE_VULKAN_LOADER),yy)
++FLUTTER_PI_DEPENDENCIES += vulkan-loader
++FLUTTER_PI_CONF_OPTS += -DENABLE_VULKAN=ON
++else
++FLUTTER_PI_CONF_OPTS += -DENABLE_VULKAN=OFF
++endif
++
+ ifeq ($(BR2_PACKAGE_HAS_LIBGLES),y)
+ FLUTTER_PI_CONF_OPTS += -DENABLE_OPENGL=ON
+ else
+diff --git a/package/flutter-sdk-bin/flutter-sdk-bin.hash b/package/flutter-sdk-bin/flutter-sdk-bin.hash
+index a204de1807..48c9c7d7e3 100644
+--- a/package/flutter-sdk-bin/flutter-sdk-bin.hash
++++ b/package/flutter-sdk-bin/flutter-sdk-bin.hash
+@@ -1,3 +1,3 @@
+ # Locally calculated
+-sha256  b6bc6f93423488c67110e0fe56523cd2260f3a4c379ed015cd1c7fab66362739  flutter_linux_3.13.9-stable.tar.xz
++sha256  7cb12032cf615a92a7bc9042100f3f2af62df7df3ca3bee27f4b153fe218b239  flutter_linux_3.16.8-stable.tar.xz
+ sha256  a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20  LICENSE
+diff --git a/package/flutter-sdk-bin/flutter-sdk-bin.mk b/package/flutter-sdk-bin/flutter-sdk-bin.mk
+index e8e71b6ab0..0d9a44596d 100644
+--- a/package/flutter-sdk-bin/flutter-sdk-bin.mk
++++ b/package/flutter-sdk-bin/flutter-sdk-bin.mk
+@@ -4,7 +4,7 @@
+ #
+ ################################################################################
+ 
+-FLUTTER_SDK_BIN_VERSION = 3.13.9
++FLUTTER_SDK_BIN_VERSION = 3.16.8
+ FLUTTER_SDK_BIN_SITE = https://storage.googleapis.com/flutter_infra_release/releases/stable/linux
+ FLUTTER_SDK_BIN_SOURCE = flutter_linux_$(FLUTTER_SDK_BIN_VERSION)-stable.tar.xz
+ FLUTTER_SDK_BIN_LICENSE = BSD-3-Clause
+@@ -25,7 +25,7 @@ HOST_FLUTTER_SDK_BIN_ENV = \
+ HOST_FLUTTER_SDK_BIN_CONF_OPTS = \
+ 	--clear-features \
+ 	--no-analytics \
+-	--disable-telemetry \
++	--disable-analytics \
+ 	--enable-custom-devices \
+ 	--enable-linux-desktop \
+ 	--no-enable-android \
+@@ -41,11 +41,8 @@ define HOST_FLUTTER_SDK_BIN_CONFIGURE_CMDS
+ 	$(HOST_FLUTTER_SDK_BIN_ENV) $(@D)/bin/dart --disable-analytics
+ endef
+ 
+-# Remove the cache, as we will run precache after setting up flutter and dart
+-# with the new config options.
+ define HOST_FLUTTER_SDK_BIN_BUILD_CMDS
+ 	mkdir -p $(HOST_FLUTTER_SDK_BIN_SDK)
+-	rm -rf $(HOST_FLUTTER_SDK_BIN_SDK)/.pub-cache
+ 	cd $(@D) && \
+ 		$(HOST_FLUTTER_SDK_BIN_ENV) $(@D)/bin/flutter precache;
+ endef
+@@ -54,14 +51,20 @@ define HOST_FLUTTER_SDK_BIN_INSTALL_CMDS
+ 	cp -rpdT $(@D)/. $(HOST_FLUTTER_SDK_BIN_SDK)/
+ endef
+ 
+-ifeq ($(BR2_ENABLE_RUNTIME_DEBUG),y)
+-HOST_FLUTTER_SDK_BIN_SDK_ROOT = \
+-	$(HOST_FLUTTER_SDK_BIN_SDK_ENGINE)/common/flutter_patched_sdk
++ifeq ($(FLUTTER_ENGINE_RUNTIME_MODE_PROFILE),y)
++HOST_FLUTTER_SDK_BIN_PROFILE_FLAGS = --track-widget-creation
++HOST_FLUTTER_SDK_BIN_SDK_PRODUCT = false
++HOST_FLUTTER_SDK_BIN_SDK_ROOT = $(HOST_FLUTTER_SDK_BIN_SDK_ENGINE)/common/flutter_patched_sdk
++HOST_FLUTTER_SDK_BIN_SDK_VM_PROFILE = true
++else ifeq ($(BR2_ENABLE_RUNTIME_DEBUG),y)
++HOST_FLUTTER_SDK_BIN_DEBUG_FLAGS = --enable-asserts
+ HOST_FLUTTER_SDK_BIN_SDK_PRODUCT = false
++HOST_FLUTTER_SDK_BIN_SDK_ROOT = $(HOST_FLUTTER_SDK_BIN_SDK_ENGINE)/common/flutter_patched_sdk
++HOST_FLUTTER_SDK_BIN_SDK_VM_PROFILE = false
+ else
+-HOST_FLUTTER_SDK_BIN_SDK_ROOT = \
+-	$(HOST_FLUTTER_SDK_BIN_SDK_ENGINE)/common/flutter_patched_sdk_product
+ HOST_FLUTTER_SDK_BIN_SDK_PRODUCT = true
++HOST_FLUTTER_SDK_BIN_SDK_ROOT = $(HOST_FLUTTER_SDK_BIN_SDK_ENGINE)/common/flutter_patched_sdk_product
++HOST_FLUTTER_SDK_BIN_SDK_VM_PROFILE = false
+ endif
+ 
+ # The Order matters.Taken from:
+@@ -73,8 +76,10 @@ HOST_FLUTTER_SDK_BIN_DART_ARGS = \
+ 	--sdk-root $(HOST_FLUTTER_SDK_BIN_SDK_ROOT) \
+ 	--target=flutter \
+ 	--no-print-incremental-dependencies \
+-	-Ddart.vm.profile=false \
++	-Ddart.vm.profile=$(HOST_FLUTTER_SDK_BIN_SDK_VM_PROFILE) \
+ 	-Ddart.vm.product=$(HOST_FLUTTER_SDK_BIN_SDK_PRODUCT) \
++	$(HOST_FLUTTER_SDK_BIN_DEBUG_FLAGS) \
++	$(HOST_FLUTTER_SDK_BIN_PROFILE_FLAGS) \
+ 	--aot \
+ 	--tfa \
+ 	--target-os linux \
+@@ -96,4 +101,4 @@ HOST_FLUTTER_SDK_BIN_DART_BIN = \
+ $(eval $(host-generic-package))
+ 
+ # For target packages to locate said pub-cache
+-FLUTTER_SDK_BIN_PUB_CACHE = $(HOST_FLUTTER_SDK_BIN_SDK)/.pub-cache
++FLUTTER_SDK_BIN_PUB_CACHE = $(DL_DIR)/br-flutter-pub-cache
+diff --git a/package/ivi-homescreen/0001-add-missing-headers-to-the-audio-players-and-keyboar.patch b/package/ivi-homescreen/0001-add-missing-headers-to-the-audio-players-and-keyboar.patch
+new file mode 100644
+index 0000000000..0d308b786b
+--- /dev/null
++++ b/package/ivi-homescreen/0001-add-missing-headers-to-the-audio-players-and-keyboar.patch
+@@ -0,0 +1,104 @@
++From 7e35ea4fbd94a1604907069bb9cc2e2dff4b43c7 Mon Sep 17 00:00:00 2001
++From: Adam Duskett <adam.duskett@amarulasolutions.com>
++Date: Sat, 6 Jan 2024 14:18:56 -0700
++Subject: [PATCH] add missing headers to the audio-players and keyboard_manager
++ plugin
++
++Fixes flutter::StandardMethodCodec not being declared on the following lines:
++plugins/audio_players/audio_players_registry.cc:83
++plugins/audio_players/audio_players_registry.cc:94
++plugins/audio_players/audio_players_registry.cc:152
++plugins/audio_players/audio_player.cc:257
++plugins/audio_players/audio_player.cc:623
++plugins/keyboard_manager/keyboard_manager.cc:25
++
++Upstream: https://github.com/toyota-connected/ivi-homescreen/pull/133
++
++Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
++---
++ shell/plugins/audio_players/audio_player.cc           | 3 ++-
++ shell/plugins/audio_players/audio_players.cc          | 4 +++-
++ shell/plugins/audio_players/audio_players_registry.cc | 3 ++-
++ shell/plugins/keyboard_manager/keyboard_manager.h     | 3 ++-
++ 4 files changed, 9 insertions(+), 4 deletions(-)
++
++diff --git a/shell/plugins/audio_players/audio_player.cc b/shell/plugins/audio_players/audio_player.cc
++index 56027eb..a85e9ae 100644
++--- a/shell/plugins/audio_players/audio_player.cc
+++++ b/shell/plugins/audio_players/audio_player.cc
++@@ -20,6 +20,7 @@
++ #include <map>
++ #include <sstream>
++ 
+++#include <flutter/standard_method_codec.h>
++ #include <flutter/standard_message_codec.h>
++ 
++ #include <gst/audio/audio.h>
++@@ -639,4 +640,4 @@ void AudioPlayer::OnPlatformMessage(const FlutterPlatformMessage* message,
++   engine->SendPlatformMessageResponse(message->response_handle, result->data(),
++                                       result->size());
++ }
++-}  // namespace Plugins
++\ No newline at end of file
+++}  // namespace Plugins
++diff --git a/shell/plugins/audio_players/audio_players.cc b/shell/plugins/audio_players/audio_players.cc
++index 0605576..4290f5a 100644
++--- a/shell/plugins/audio_players/audio_players.cc
+++++ b/shell/plugins/audio_players/audio_players.cc
++@@ -19,6 +19,8 @@
++ #include <memory>
++ #include <vector>
++ 
+++#include <flutter/standard_method_codec.h>
+++
++ #include "audio_player.h"
++ #include "audio_players_registry.h"
++ #include "engine.h"
++@@ -314,4 +316,4 @@ void AudioPlayers::OnPlatformMessage(const FlutterPlatformMessage* message,
++               : "Unknown AudioPlayersLinux error");
++   }
++ }
++-}
++\ No newline at end of file
+++}
++diff --git a/shell/plugins/audio_players/audio_players_registry.cc b/shell/plugins/audio_players/audio_players_registry.cc
++index 6c9ef33..00c4f45 100644
++--- a/shell/plugins/audio_players/audio_players_registry.cc
+++++ b/shell/plugins/audio_players/audio_players_registry.cc
++@@ -19,6 +19,7 @@
++ #include <memory>
++ #include <mutex>
++ 
+++#include <flutter/standard_method_codec.h>
++ #include <flutter/standard_message_codec.h>
++ 
++ #include "audio_player.h"
++@@ -168,4 +169,4 @@ void AudioPlayersRegistry::OnPlatformMessageEvents(
++   engine->SendPlatformMessageResponse(message->response_handle, result->data(),
++                                       result->size());
++ }
++-}  // namespace Plugins
++\ No newline at end of file
+++}  // namespace Plugins
++diff --git a/shell/plugins/keyboard_manager/keyboard_manager.h b/shell/plugins/keyboard_manager/keyboard_manager.h
++index 74b4e8d..cae1954 100644
++--- a/shell/plugins/keyboard_manager/keyboard_manager.h
+++++ b/shell/plugins/keyboard_manager/keyboard_manager.h
++@@ -17,6 +17,7 @@
++ #pragma once
++ 
++ #include "flutter/fml/macros.h"
+++#include <flutter/standard_method_codec.h>
++ 
++ #include <shell/platform/embedder/embedder.h>
++ 
++@@ -45,4 +46,4 @@ class KeyboardManager {
++ 
++  private:
++   static constexpr char kGetKeyboardState[] = "getKeyboardState";
++-};
++\ No newline at end of file
+++};
++-- 
++2.43.0
++
+diff --git a/package/ivi-homescreen/Config.in b/package/ivi-homescreen/Config.in
+new file mode 100644
+index 0000000000..de7509320f
+--- /dev/null
++++ b/package/ivi-homescreen/Config.in
+@@ -0,0 +1,270 @@
++menuconfig BR2_PACKAGE_IVI_HOMESCREEN
++	bool "ivi-homescreen"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on BR2_HOST_GCC_AT_LEAST_5 # flutter-engine
++	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_5 # flutter-engine
++	depends on !BR2_TOOLCHAIN_HAS_GCC_BUG_64735 # flutter-engine
++	depends on BR2_TOOLCHAIN_USES_GLIBC # flutter-engine
++	depends on BR2_INSTALL_LIBSTDCPP # flutter-engine
++	depends on !BR2_STATIC_LIBS # flutter-engine, wayland
++	depends on BR2_USE_WCHAR # flutter-engine
++	depends on BR2_PACKAGE_HAS_LIBGL || BR2_PACKAGE_HAS_LIBGLES # flutter-engine
++	select BR2_PACKAGE_HOST_FLUTTER_SDK_BIN
++	select BR2_PACKAGE_FLUTTER_ENGINE
++	select BR2_PACKAGE_LIBXKBCOMMON
++	select BR2_PACKAGE_WAYLAND
++	select BR2_PACKAGE_WAYLAND_PROTOCOLS
++	select BR2_PACKAGE_WAYLAND_UTILS
++	help
++	  Toyota's Flutter Embedder that communicates with Wayland
++	  compositors.
++	  Features:
++	  - Strongly Typed (C++)
++	  - Lightweight
++	  - Platform Channels enabled/disabled via CMake
++	  - OpenGL Texture Framework
++	  - Compositor Sub-surface/Region support
++	  - Vulkan / EGL backend support
++
++	  https://github.com/toyota-connected/ivi-homescreen
++
++if BR2_PACKAGE_IVI_HOMESCREEN
++
++config BR2_PACKAGE_IVI_HOMESCREEN_IVI_SHELL_CLIENT
++	bool "ivi-shell client"
++
++comment "Logging"
++config BR2_PACKAGE_IVI_HOMESCREEN_DART_VM_LOGGING
++	bool "Enable Dart VM Logging"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_DLT_LOGGING
++	bool "DLT logging"
++
++comment "EGL options"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_EGL_TRANSPARENCY
++	bool "Transparency"
++	depends on BR2_PACKAGE_HAS_LIBEGL
++
++comment "Transparency support needs an EGL backend"
++	depends on !BR2_PACKAGE_HAS_LIBEGL
++
++config BR2_PACKAGE_IVI_HOMESCREEN_EGL_ENABLE_3D
++	bool "3D support"
++	depends on BR2_PACKAGE_HAS_LIBEGL
++	help
++	  Build with EGL Stencil, Depth, and Stencil
++
++comment "3D support needs an EGL backend"
++	depends on !BR2_PACKAGE_HAS_LIBEGL
++
++config BR2_PACKAGE_IVI_HOMESCREEN_EGL_MULTISAMPLE
++	bool "Multisample support"
++	depends on BR2_PACKAGE_HAS_LIBEGL
++	help
++	  Build with EGL Sample set to 4
++
++comment "Multisample support needs an EGL backend"
++	depends on !BR2_PACKAGE_HAS_LIBEGL
++
++comment "dependency-less plugins"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_ACCESSIBILITY_PLUGIN
++	bool "Accessibility"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_COMP_REGION_PLUGIN
++	bool "Compositor Region"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_COMP_SURF_PLUGIN
++	bool "Compositor Surface"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_DESKTOP_WINDOW_PLUGIN
++	bool "Desktop Window"
++	help
++	  Flutter plugin to change window size.
++
++	  https://pub.dev/packages/desktop_window
++
++config BR2_PACKAGE_IVI_HOMESCREEN_GO_ROUTER_PLUGIN
++	bool "Go Router"
++	help
++	  A declarative routing package for Flutter that uses the
++	  Router API to provide a convenient, url-based API for
++	  navigating between different screens. You can define URL
++	  patterns, navigate using a URL, handle deep links, and a
++	  number of other navigation-related scenarios.
++
++	  https://pub.dev/packages/go_router
++
++config BR2_PACKAGE_IVI_HOMESCREEN_INTEGRATION_TEST_PLUGIN
++	bool "Flutter Integration Test support"
++	help
++	  https://docs.flutter.dev/cookbook/testing/integration/introduction
++
++config BR2_PACKAGE_IVI_HOMESCREEN_ISOLATE_PLUGIN
++	bool "Isolate"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_KEYBOARD_MANAGER_PLUGIN
++	bool "Keyboard Manager"
++	select BR2_PACKAGE_IVI_HOMESCREEN_TEXT_INPUT_PLUGIN # runtime
++	help
++	  This is a wrapper for the raw keyboard listener made to
++	  simplify intercept external keyboard button press.
++
++	  https://pub.dev/packages/keyboard_manager
++
++config BR2_PACKAGE_IVI_HOMESCREEN_KEY_EVENT_PLUGIN
++	bool "Key Event"
++	select BR2_PACKAGE_IVI_HOMESCREEN_TEXT_INPUT_PLUGIN # runtime
++	help
++	  KeyEvent plugin to support RawKeyEvent.
++
++config BR2_PACKAGE_IVI_HOMESCREEN_LAYER_PLAYGROUND_PLUGIN
++	bool "Layer Playground"
++	select BR2_PACKAGE_IVI_HOMESCREEN_PLATFORM_VIEWS_PLUGIN
++	help
++	  This plugin enables the platform views plugin and also
++	  provides a simple-box-view-type option.
++
++	  https://github.com/toyota-connected/ivi-homescreen/tree/main/shell/plugins/platform_views
++
++config BR2_PACKAGE_IVI_HOMESCREEN_LOGGING_PLUGIN
++	bool "Logging"
++
++config BR2_PACKAGE_IVI_HOMESCREEN_MOUSE_CURSOR_PLUGIN
++	bool "Mouse Cursor"
++	help
++	  Add mouse cursor support.
++
++config BR2_PACKAGE_IVI_HOMESCREEN_PACKAGE_INFO_PLUGIN
++	bool "PackageInfo"
++	help
++	  Prints the ivi-homescreen package information.
++
++config BR2_PACKAGE_IVI_HOMESCREEN_PLATFORM_PLUGIN
++	bool "Platform"
++	help
++	  Get information about the platform the Flutter application
++	  is running on.
++
++config BR2_PACKAGE_IVI_HOMESCREEN_PLATFORM_VIEWS_PLUGIN
++	bool "Platform Views"
++	help
++	  This plugin supports the AndroidView interface. Meaning you
++	  can take any Platform View Dart code, change the definition
++	  to use AndroidView, and you will have a working interface.
++
++	  Benefits of using this interface:
++	    - pre-defined interface that is supported in Flutter SDK
++	    - params are easily augmented in Dart to add for given use
++	      case
++	    - pass touch to another process/library without additional
++	      work
++
++	  For a backing implementation there are a number of approaches:
++	    - Have a PlatformView implementation render to a Texture
++	    - Compositor Region support
++	      (poke a hole for another process)
++	    - Compositor sub-surface and manage Z-order
++
++	  The above is already supported today using either an OpenGL
++	  texture, or a Compositor Sub-Surface. Using Platform Views
++	  just re-uses an existing interface.
++
++	  https://github.com/toyota-connected/ivi-homescreen/tree/main/shell/plugins/platform_views
++
++config BR2_PACKAGE_IVI_HOMESCREEN_RESTORATION_PLUGIN
++	bool "Restoration"
++	help
++	  Handles the Flutter restoration callback
++
++config BR2_PACKAGE_IVI_HOMESCREEN_TEXT_INPUT_PLUGIN
++	bool "Text Input"
++	help
++	  Allow for text input
++
++comment "plugins with external dependencies"
++config BR2_PACKAGE_IVI_HOMESCREEN_AUDIO_PLAYERS
++	bool "Audio Players"
++	select BR2_PACKAGE_GSTREAMER1
++	select BR2_PACKAGE_GST1_PLUGINS_BASE
++	select BR2_PACKAGE_GST1_PLUGINS_BASE_PLUGIN_ALSA
++	select BR2_PACKAGE_GST1_PLUGINS_BASE_PLUGIN_AUDIOCONVERT
++	select BR2_PACKAGE_GST1_PLUGINS_BASE_PLUGIN_AUDIORESAMPLE
++	select BR2_PACKAGE_GST1_PLUGINS_BASE_PLUGIN_VOLUME
++	help
++	  A Flutter plugin to play multiple simultaneously audio files.
++	  Based on audioplayers-v5.2.1
++
++	  https://pub.dev/packages/audioplayers
++
++config BR2_PACKAGE_IVI_HOMESCREEN_FLUTTER_SECURE_STORAGE_PLUGIN
++	bool "Flutter Secure Storage"
++	select BR2_PACKAGE_LIBSECRET
++	help
++	  Store data in secure storage
++
++	  https://pub.dev/packages/flutter_secure_storage
++
++config BR2_PACKAGE_IVI_HOMESCREEN_GOOGLE_SIGN_IN_PLUGIN
++	bool "Google Sign In manager"
++	select BR2_PACKAGE_LIBCURL
++	select BR2_PACKAGE_LIBCURL_FORCE_TLS
++	select BR2_PACKAGE_OPENSSL
++	help
++	  This static plugin is to support this pub.dev package:
++	  https://pub.dev/packages/google_sign_in
++
++	  https://github.com/toyota-connected/ivi-homescreen/tree/main/shell/plugins/google_sign_in
++
++config BR2_PACKAGE_IVI_HOMESCREEN_GSTREAMER_EGL_PLUGIN
++	bool "GStreamer EGL"
++	depends on BR2_PACKAGE_FFMPEG_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_HAS_LIBEGL
++	select BR2_PACKAGE_FFMPEG
++	select BR2_PACKAGE_GSTREAMER1
++	select BR2_PACKAGE_GST1_PLUGINS_BASE
++	select BR2_PACKAGE_GST1_PLUGINS_BASE_LIB_OPENGL
++	select BR2_PACKAGE_GST1_PLUGINS_BASE_LIB_OPENGL_EGL
++	help
++	  A GStreamer-powered alternative to Flutter's video_player that
++	  support Linux, iOS and Android.
++
++	  https://pub.dev/packages/flutter_gstreamer_player
++
++comment "GStreamer plugin needs an EGL backend"
++	depends on BR2_PACKAGE_FFMPEG_ARCH_SUPPORTS
++	depends on !BR2_PACKAGE_HAS_LIBEGL
++
++config BR2_PACKAGE_IVI_HOMESCREEN_OPENGL_TEXTURE_PLUGIN
++	bool "OpenGL Texture"
++	depends on BR2_PACKAGE_HAS_LIBEGL
++	help
++	  A Flutter OpenGL ES plugin using a Texture() widget.
++	  Many shaders from ShaderToy.com can be copy/pasted
++
++	  https://pub.dev/packages/flutter_opengl
++
++comment "OpenGL texture plugin needs an EGL backend"
++	depends on !BR2_PACKAGE_HAS_LIBEGL
++
++endif # BR2_PACKAGE_IVI_HOMESCREEN
++
++comment "ivi-homescreen needs a glibc toolchain w/ wchar, C++, gcc >= 5, dynamic library, host gcc >= 5, NPTL"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on !BR2_TOOLCHAIN_USES_GLIBC || !BR2_TOOLCHAIN_HAS_THREADS_NPTL \
++		|| !BR2_INSTALL_LIBSTDCPP || !BR2_TOOLCHAIN_GCC_AT_LEAST_5 \
++		|| BR2_STATIC_LIBS || !BR2_USE_WCHAR \
++		|| !BR2_HOST_GCC_AT_LEAST_5
++
++comment "ivi-homescreen needs a toolchain not affected by GCC bug 64735"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on BR2_TOOLCHAIN_HAS_GCC_BUG_64735
++
++comment "ivi-homescreen needs an OpenGL or OpenGLES backend"
++	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
++	depends on BR2_PACKAGE_FLUTTER_ENGINE_ARCH_SUPPORTS
++	depends on !BR2_PACKAGE_HAS_LIBGL && !BR2_PACKAGE_HAS_LIBGLES
+diff --git a/package/ivi-homescreen/ivi-homescreen.hash b/package/ivi-homescreen/ivi-homescreen.hash
+new file mode 100644
+index 0000000000..a0d0162948
+--- /dev/null
++++ b/package/ivi-homescreen/ivi-homescreen.hash
+@@ -0,0 +1,21 @@
++# Locally calculated
++sha256  1ab2e7ab5f947482cb5529dbb6392e7e1945ceb0b593abde6b6279d7bd2fdb79  ivi-homescreen-5ab78a19e95c88cc5d6b173ab1260a211e78cf0a-br1.tar.gz
++
++# Apache-2.0
++sha256  6b96fa0a3def85caaf466caa2bd82d4ca4f22d106ff88f97a00c537c00cc714b  LICENSE
++sha256  943c358cb6d086e4bc0937941b8f8d766db7d4e5f06583efd45dca0ca6a645f3  third_party/filament/libs/bluevk/include/bluevk/BlueVK.h
++
++# BSD-3-Clause
++sha256  fdff25c8a4147791114584a45d56621336d294601da77656e83504a71747c8c2  third_party/flutter/shell/platform/common/client_wrapper/core_implementations.cc
++
++# BSD-Style
++sha256  baa98cbcc03e3e745c4ad9ac2d3fb3464424486b2e420081181013034a7e6406  third_party/flutter/third_party/dart/runtime/include/dart_api.h
++
++# BSL-1.0
++sha256  c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566  third_party/asio-1-28-1/asio/LICENSE_1_0.txt
++
++# MIT
++sha256  240f786071b64c28c0a1dae3e3b05fc3ca93fa4882b1e36e56ee49fee3037b0a  third_party/flutter/third_party/rapidjson/include/rapidjson/rapidjson.h
++sha256  4b67e7ae8c91e68e1a929eb1cbaa4c773c6d19aa91aaa12c390cf9560d1c9799  third_party/sanitizers-cmake/LICENSE
++sha256  a7241a379cb98d37788f82c2fc2e484c3ae85dae881fd3406f0637644850926f  third_party/spdlog-1.12.0/LICENSE
++sha256  8b79f17fa7cf47adeeb8277965267e3932155fdfcab81a0ed5d583438bdf9135  third_party/weston/protocol/ivi-application.xml
+diff --git a/package/ivi-homescreen/ivi-homescreen.mk b/package/ivi-homescreen/ivi-homescreen.mk
+new file mode 100644
+index 0000000000..4293b2bc35
+--- /dev/null
++++ b/package/ivi-homescreen/ivi-homescreen.mk
+@@ -0,0 +1,136 @@
++################################################################################
++#
++# ivi-homescreen
++#
++################################################################################
++
++IVI_HOMESCREEN_VERSION = 5ab78a19e95c88cc5d6b173ab1260a211e78cf0a
++IVI_HOMESCREEN_SITE = https://github.com/toyota-connected/ivi-homescreen.git
++IVI_HOMESCREEN_SITE_METHOD = git
++IVI_HOMESCREEN_LICENSE = Apache-2.0, BSD-3-Clause, BSD-Style, BSL-1.0, MIT
++
++# Keep order as listed in ivi-homescreen.hash
++IVI_HOMESCREEN_LICENSE_FILES = \
++	LICENSE \
++	third_party/filament/libs/bluevk/include/bluevk/BlueVK.h \
++	third_party/flutter/shell/platform/common/client_wrapper/core_implementations.cc \
++	third_party/flutter/third_party/dart/runtime/include/dart_api.h \
++	third_party/asio-1-28-1/asio/LICENSE_1_0.txt \
++	third_party/flutter/third_party/rapidjson/include/rapidjson/rapidjson.h \
++	third_party/sanitizers-cmake/LICENSE \
++	third_party/spdlog-1.12.0/LICENSE \
++	third_party/weston/protocol/ivi-application.xml
++
++IVI_HOMESCREEN_DEPENDENCIES = \
++	host-flutter-sdk-bin \
++	flutter-engine \
++	libxkbcommon \
++	wayland \
++	wayland-protocols \
++	wayland-utils
++
++IVI_HOMESCREEN_CONF_OPTS = \
++	-DBUILD_CRASH_HANDLER=OFF \
++	-DBUILD_PLUGIN_FILE_SELECTOR=OFF \
++	-DBUILD_PLUGIN_FIREBASE_CORE=OFF \
++	-DBUILD_PLUGIN_URL_LAUNCHER=OFF \
++	-DBUILD_TEXTURE_NAVI_RENDER_EGL=OFF \
++	-DBUILD_TEXTURE_TEST_EGL=OFF \
++	-DBUILD_UNIT_TESTS=OFF \
++	-DENABLE_AGL_CLIENT=OFF \
++	-DENABLE_XDG_CLIENT=ON \
++	-DENABLE_IVI_SHELL_CLIENT=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_IVI_SHELL_CLIENT),ON,OFF)
++
++# Logging
++IVI_HOMESCREEN_CONF_OPTS += \
++	-DENABLE_DART_VM_LOGGING=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_DART_VM_LOGGING),ON,OFF) \
++	-DENABLE_DLT=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_DLT_LOGGING),ON,OFF)
++
++# EGL
++IVI_HOMESCREEN_CONF_OPTS += \
++	-DBUILD_EGL_TRANSPARENCY=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_EGL_TRANSPARENCY),ON,OFF) \
++	-DBUILD_EGL_ENABLE_3D=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_EGL_ENABLE_3D),ON,OFF) \
++	-DBUILD_EGL_ENABLE_MULTISAMPLE=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_EGL_MULTISAMPLE),ON,OFF)
++
++# dependency-less plugins
++IVI_HOMESCREEN_CONF_OPTS += \
++	-DBUILD_PLUGIN_ACCESSIBILITY=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_ACCESSIBILITY_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_COMP_REGION=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_COMP_REGION_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_COMP_SURF=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_COMP_SURF_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_DESKTOP_WINDOW=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_DESKTOP_WINDOW_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_GO_ROUTER=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_GO_ROUTER_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_INTEGRATION_TEST=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_INTEGRATION_TEST_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_ISOLATE=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_ISOLATE_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_KEYBOARD_MANAGER=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_KEYBOARD_MANAGER_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_KEY_EVENT=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_KEY_EVENT_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_LAYER_PLAYGROUND=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_LAYER_PLAYGROUND_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_LOGGING=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_LOGGING_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_MOUSE_CURSOR=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_MOUSE_CURSOR_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_PACKAGE_INFO=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_PACKAGE_INFO_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_PLATFORM=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_PLATFORM_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_PLATFORM_VIEWS=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_PLATFORM_VIEWS_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_RESTORATION=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_RESTORATION_PLUGIN),ON,OFF) \
++	-DBUILD_PLUGIN_TEXT_INPUT=$(if $(BR2_PACKAGE_IVI_HOMESCREEN_TEXT_INPUT_PLUGIN),ON,OFF)
++
++# Wayland backend options
++ifeq ($(BR2_PACKAGE_HAS_LIBEGL),y)
++IVI_HOMESCREEN_DEPENDENCIES += libegl
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_BACKEND_WAYLAND_EGL=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_BACKEND_WAYLAND_EGL=OFF
++endif
++
++ifeq ($(BR2_PACKAGE_MESA3D_VULKAN_DRIVER),y)
++IVI_HOMESCREEN_DEPENDENCIES += mesa3d
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_BACKEND_WAYLAND_VULKAN=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_BACKEND_WAYLAND_VULKAN=OFF
++endif
++
++ifeq ($(BR2_PACKAGE_LIBDRM),y)
++IVI_HOMESCREEN_DEPENDENCIES += libdrm
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_BACKEND_WAYLAND_DRM=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_BACKEND_WAYLAND_DRM=OFF
++endif
++
++# "plugins with external dependencies"
++ifeq ($(BR2_PACKAGE_IVI_HOMESCREEN_AUDIO_PLAYERS),y)
++IVI_HOMESCREEN_DEPENDENCIES += gstreamer1 gst1-plugins-base
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_AUDIO_PLAYERS=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_AUDIO_PLAYERS=OFF
++endif
++
++ifeq ($(BR2_PACKAGE_IVI_HOMESCREEN_FLUTTER_SECURE_STORAGE_PLUGIN),y)
++IVI_HOMESCREEN_DEPENDENCIES += libsecret
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_SECURE_STORAGE=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_SECURE_STORAGE=OFF
++endif
++
++ifeq ($(BR2_PACKAGE_IVI_HOMESCREEN_GOOGLE_SIGN_IN_PLUGIN),y)
++IVI_HOMESCREEN_DEPENDENCIES += libcurl
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_GOOGLE_SIGN_IN=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_GOOGLE_SIGN_IN=OFF
++endif
++
++ifeq ($(BR2_PACKAGE_IVI_HOMESCREEN_GSTREAMER_EGL_PLUGIN),y)
++IVI_HOMESCREEN_DEPENDENCIES += ffmpeg gstreamer1 gst1-plugins-base
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_GSTREAMER_EGL=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += -DBUILD_PLUGIN_GSTREAMER_EGL=OFF
++endif
++
++ifeq ($(BR2_PACKAGE_IVI_HOMESCREEN_OPENGL_TEXTURE_PLUGIN),y)
++IVI_HOMESCREEN_CONF_OPTS += \
++	-DBUILD_PLUGIN_OPENGL_TEXTURE=ON \
++	-DBUILD_TEXTURE_EGL=ON
++else
++IVI_HOMESCREEN_CONF_OPTS += \
++	-DBUILD_PLUGIN_OPENGL_TEXTURE=OFF \
++	-DBUILD_TEXTURE_EGL=OFF
++endif
++
++$(eval $(cmake-package))
+-- 
+2.43.0
+

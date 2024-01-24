@@ -1,0 +1,13 @@
+config BR2_PACKAGE_FLUTTER_TEXTPAD
+	bool "flutter-textpad"
+	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
+	depends on BR2_PACKAGE_FLUTTER_ENGINE
+	select BR2_PACKAGE_HOST_FLUTTER_SDK_BIN
+	help
+	  A simple text input app
+
+	  https://github.com/WAKazuyoshiAkiyama/flutter_textpad
+
+comment "flutter-textpad needs flutter-engine"
+	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
+	depends on !BR2_PACKAGE_FLUTTER_ENGINE

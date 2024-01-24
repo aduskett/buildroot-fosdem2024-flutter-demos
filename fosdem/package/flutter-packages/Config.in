@@ -1,0 +1,23 @@
+menuconfig BR2_PACKAGE_FLUTTER_PACKAGES
+	bool "flutter packages"
+	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
+	depends on BR2_PACKAGE_FLUTTER_ENGINE
+	select BR2_PACKAGE_HOST_FLUTTER_SDK_BIN
+	help
+	  First party flutter packages known to work on Linux.
+	  These packages are known to work with ivi-homescreen,
+	  but may also work with flutter-pi.
+
+if BR2_PACKAGE_FLUTTER_PACKAGES
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-adaptive-scaffold-example/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-animations-example/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-dynamic-layouts-example/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-go-router-example/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-image-example/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-markdown-example/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/flutter-rfw-local-example/Config.in"
+endif
+
+comment "flutter packages need flutter-engine"
+	depends on BR2_PACKAGE_HOST_FLUTTER_SDK_BIN_ARCH_SUPPORTS
+	depends on !BR2_PACKAGE_FLUTTER_ENGINE

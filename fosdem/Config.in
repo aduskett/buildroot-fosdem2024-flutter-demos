@@ -1,0 +1,4 @@
+menu "Flutter packages"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-packages/Config.in"
+source "$BR2_EXTERNAL_FOSDEM_PATH/package/flutter-textpad/Config.in"
+endmenu

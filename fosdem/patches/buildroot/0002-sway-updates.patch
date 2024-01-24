@@ -1,0 +1,688 @@
+From 2bd53dffe32cec7dc1b2a4b40c6ff73a126fbc28 Mon Sep 17 00:00:00 2001
+From: Adam Duskett <adam.duskett@amarulasolutions.com>
+Date: Tue, 23 Jan 2024 10:33:57 -0700
+Subject: [PATCH] sway updates
+
+This patch brings in packages and updates from the Buildroot main branch as
+of commit 3b8b1125 which make dealing with sway much easier. It includes:
+
+New packages:
+  - dmenu-wayland
+  - fcft
+  - foot
+  - libutempter
+  - tllist
+
+package/sway changes:
+  - Add a help note about the default terminal: 31c169f5
+  - Enalbe swaynag support: 4163b67c
+  - Enable swaybar tray support: 31058f5f
+  - Enable swaybar support: b08df59f
+  - Enable default-wallpaper support: b5b18f9e
+  - Enable bash-completion support: cb39803e
+
+Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
+---
+ package/Config.in                             |  5 ++
+ .../0001-support-cross-compilation.patch      | 32 ++++++++++++
+ package/dmenu-wayland/Config.in               | 27 ++++++++++
+ package/dmenu-wayland/dmenu-wayland.hash      |  3 ++
+ package/dmenu-wayland/dmenu-wayland.mk        | 28 ++++++++++
+ package/fcft/Config.in                        | 52 +++++++++++++++++++
+ package/fcft/fcft.hash                        |  3 ++
+ package/fcft/fcft.mk                          | 44 ++++++++++++++++
+ package/foot/Config.in                        | 37 +++++++++++++
+ package/foot/foot.hash                        |  3 ++
+ package/foot/foot.mk                          | 50 ++++++++++++++++++
+ .../0001-force-symlink-creation.patch         | 36 +++++++++++++
+ package/libutempter/Config.in                 | 13 +++++
+ package/libutempter/libutempter.hash          |  3 ++
+ package/libutempter/libutempter.mk            | 27 ++++++++++
+ package/sway/Config.in                        | 30 +++++++++++
+ package/sway/sway.mk                          | 35 +++++++++++--
+ package/tllist/Config.in                      |  6 +++
+ package/tllist/tllist.hash                    |  3 ++
+ package/tllist/tllist.mk                      | 16 ++++++
+ 20 files changed, 448 insertions(+), 5 deletions(-)
+ create mode 100644 package/dmenu-wayland/0001-support-cross-compilation.patch
+ create mode 100644 package/dmenu-wayland/Config.in
+ create mode 100644 package/dmenu-wayland/dmenu-wayland.hash
+ create mode 100644 package/dmenu-wayland/dmenu-wayland.mk
+ create mode 100644 package/fcft/Config.in
+ create mode 100644 package/fcft/fcft.hash
+ create mode 100644 package/fcft/fcft.mk
+ create mode 100644 package/foot/Config.in
+ create mode 100644 package/foot/foot.hash
+ create mode 100644 package/foot/foot.mk
+ create mode 100644 package/libutempter/0001-force-symlink-creation.patch
+ create mode 100644 package/libutempter/Config.in
+ create mode 100644 package/libutempter/libutempter.hash
+ create mode 100644 package/libutempter/libutempter.mk
+ create mode 100644 package/tllist/Config.in
+ create mode 100644 package/tllist/tllist.hash
+ create mode 100644 package/tllist/tllist.mk
+
+diff --git a/package/Config.in b/package/Config.in
+index 7feb022e33..624bb7b1ea 100644
+--- a/package/Config.in
++++ b/package/Config.in
+@@ -313,8 +313,10 @@ menu "Graphic libraries and applications (graphic/text)"
+ comment "Graphic applications"
+ 	source "package/cage/Config.in"
+ 	source "package/cog/Config.in"
++	source "package/dmenu-wayland/Config.in"
+ 	source "package/flutter-gallery/Config.in"
+ 	source "package/flutter-pi/Config.in"
++	source "package/foot/Config.in"
+ 	source "package/fswebcam/Config.in"
+ 	source "package/ghostscript/Config.in"
+ 	source "package/glmark2/Config.in"
+@@ -2161,6 +2163,7 @@ menu "Other"
+ 	source "package/libunwind/Config.in"
+ 	source "package/liburcu/Config.in"
+ 	source "package/liburing/Config.in"
++	source "package/libutempter/Config.in"
+ 	source "package/libuv/Config.in"
+ 	source "package/lightning/Config.in"
+ 	source "package/linux-pam/Config.in"
+@@ -2200,6 +2203,7 @@ endif
+ 	source "package/tbb/Config.in"
+ 	source "package/tinycbor/Config.in"
+ 	source "package/tl-expected/Config.in"
++	source "package/tllist/Config.in"
+ 	source "package/tz/Config.in"
+ 	source "package/tzdata/Config.in"
+ 	source "package/uvw/Config.in"
+@@ -2221,6 +2225,7 @@ menu "Text and terminal handling"
+ 	source "package/cli11/Config.in"
+ 	source "package/docopt-cpp/Config.in"
+ 	source "package/enchant/Config.in"
++	source "package/fcft/Config.in"
+ 	source "package/fmt/Config.in"
+ 	source "package/fstrcmp/Config.in"
+ 	source "package/icu/Config.in"
+diff --git a/package/dmenu-wayland/0001-support-cross-compilation.patch b/package/dmenu-wayland/0001-support-cross-compilation.patch
+new file mode 100644
+index 0000000000..3d99330cba
+--- /dev/null
++++ b/package/dmenu-wayland/0001-support-cross-compilation.patch
+@@ -0,0 +1,32 @@
++From cd72cade6250a3ec46dd402b25a0bd55bbb97a88 Mon Sep 17 00:00:00 2001
++From: Rick van Schijndel <rol3517@gmail.com>
++Date: Wed, 20 Dec 2023 16:44:12 -0700
++Subject: [PATCH] support cross-compilation
++
++Marking wayland-scanner as native dependency fixes the path check for
++wayland-scanner.
++
++Upstream: https://github.com/nyyManni/dmenu-wayland/pull/23
++
++Signed-off-by: Rick van Schijndel <rol3517@gmail.com>
++Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
++---
++ meson.build | 2 +-
++ 1 file changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/meson.build b/meson.build
++index 3ae6f69..8d401ff 100644
++--- a/meson.build
+++++ b/meson.build
++@@ -26,7 +26,7 @@ pangocairo          = dependency('pangocairo')
++ rt                  = cc.find_library('rt')
++ wayland_client      = dependency('wayland-client')
++ wayland_protos      = dependency('wayland-protocols')
++-wayland_scanner_dep = dependency('wayland-scanner')
+++wayland_scanner_dep = dependency('wayland-scanner', native: true)
++ wayland_scanner     = find_program(
++   wayland_scanner_dep.get_pkgconfig_variable('wayland_scanner')
++ )
++-- 
++2.43.0
++
+diff --git a/package/dmenu-wayland/Config.in b/package/dmenu-wayland/Config.in
+new file mode 100644
+index 0000000000..8a4d0918dc
+--- /dev/null
++++ b/package/dmenu-wayland/Config.in
+@@ -0,0 +1,27 @@
++config BR2_PACKAGE_DMENU_WAYLAND
++	bool "dmenu-wayland"
++	depends on BR2_USE_MMU # pango
++	depends on BR2_TOOLCHAIN_HAS_SYNC_4 # pango
++	depends on BR2_TOOLCHAIN_HAS_THREADS # libglib2, pango, wayland
++	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_4_9 # pango
++	depends on !BR2_STATIC_LIBS # wayland
++	depends on BR2_INSTALL_LIBSTDCPP # pango
++	depends on BR2_USE_WCHAR # libglib2, pango
++	select BR2_PACKAGE_CAIRO
++	select BR2_PACKAGE_CAIRO_PNG
++	select BR2_PACKAGE_LIBGLIB2
++	select BR2_PACKAGE_LIBXKBCOMMON
++	select BR2_PACKAGE_PANGO
++	select BR2_PACKAGE_WAYLAND
++	select BR2_PACKAGE_WAYLAND_PROTOCOLS
++	help
++	  dmenu-wl is an efficient dynamic menu for wayland (wlroots).
++
++	  https://github.com/nyyManni/dmenu-wayland
++
++comment "dmenu-wayland needs a toolchain w/ wchar, threads, C++, dynamic library, gcc >= 4.9"
++	depends on BR2_USE_MMU
++	depends on BR2_TOOLCHAIN_HAS_SYNC_4
++	depends on !BR2_TOOLCHAIN_HAS_THREADS || \
++		!BR2_TOOLCHAIN_GCC_AT_LEAST_4_9 || BR2_STATIC_LIBS || \
++		!BR2_INSTALL_LIBSTDCPP || !BR2_USE_WCHAR
+diff --git a/package/dmenu-wayland/dmenu-wayland.hash b/package/dmenu-wayland/dmenu-wayland.hash
+new file mode 100644
+index 0000000000..1248c4ad66
+--- /dev/null
++++ b/package/dmenu-wayland/dmenu-wayland.hash
+@@ -0,0 +1,3 @@
++# Locally computed
++sha256  56340e198a2c58468c6109f3bb07ab8a074487e67b0758b29c9d4fdce7c4d594  dmenu-wayland-a380201dff5bfac2dace553d7eaedb6cea6855f9.tar.gz
++sha256  8d26bccf8a21c5e29dc756beef534403c935766c815bbb6e7eab0598632b9827  LICENSE
+diff --git a/package/dmenu-wayland/dmenu-wayland.mk b/package/dmenu-wayland/dmenu-wayland.mk
+new file mode 100644
+index 0000000000..33a73c0153
+--- /dev/null
++++ b/package/dmenu-wayland/dmenu-wayland.mk
+@@ -0,0 +1,28 @@
++################################################################################
++#
++# dmenu-wayland
++#
++################################################################################
++
++DMENU_WAYLAND_VERSION = a380201dff5bfac2dace553d7eaedb6cea6855f9
++DMENU_WAYLAND_SITE = $(call github,nyyManni,dmenu-wayland,$(DMENU_WAYLAND_VERSION))
++DMENU_WAYLAND_LICENSE = MIT
++DMENU_WAYLAND_LICENSE_FILES = LICENSE
++
++# host-wayland is for wayland-scanner
++DMENU_WAYLAND_DEPENDENCIES = \
++	host-wayland \
++	cairo \
++	libglib2 \
++	libxkbcommon \
++	pango \
++	wayland \
++	wayland-protocols
++
++# By default, sway calls dmenu not dmenu-wl
++define DMENU_WAYLAND_SYMLINK_DMENU_WL
++	ln -sf dmenu-wl $(TARGET_DIR)/usr/bin/dmenu
++endef
++DMENU_WAYLAND_POST_INSTALL_TARGET_HOOKS += DMENU_WAYLAND_SYMLINK_DMENU_WL
++
++$(eval $(meson-package))
+diff --git a/package/fcft/Config.in b/package/fcft/Config.in
+new file mode 100644
+index 0000000000..5393b95db3
+--- /dev/null
++++ b/package/fcft/Config.in
+@@ -0,0 +1,52 @@
++config BR2_PACKAGE_FCFT
++	bool "fcft"
++	depends on BR2_TOOLCHAIN_USES_GLIBC || BR2_TOOLCHAIN_USES_MUSL # C11 threads
++	select BR2_PACKAGE_FONTCONFIG
++	select BR2_PACKAGE_FREETYPE
++	select BR2_PACKAGE_PIXMAN
++	select BR2_PACKAGE_TLLIST
++	help
++	  A simple library for font loading and glyph rasterization
++	  using FontConfig, FreeType and pixman.
++
++	  https://codeberg.org/dnkl/fcft
++
++if BR2_PACKAGE_FCFT
++
++config BR2_PACKAGE_FCFT_GRAPHEME_SHAPING
++	bool "grapheme-shaping"
++	depends on BR2_INSTALL_LIBSTDCPP # harfbuzz
++	depends on BR2_TOOLCHAIN_HAS_SYNC_4 # harfbuzz
++	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_4_9 # harfbuzz
++	select BR2_PACKAGE_HARFBUZZ
++	help
++	  Enables shaping of individual grapheme clusters
++
++comment "grapheme-shaping needs a toolchain w/ C++, gcc >= 4.9"
++	depends on BR2_TOOLCHAIN_HAS_SYNC_4
++	depends on !BR2_INSTALL_LIBSTDCPP || !BR2_TOOLCHAIN_GCC_AT_LEAST_4_9
++
++config BR2_PACKAGE_FCFT_RUN_SHAPING
++	bool "run-shaping"
++	depends on BR2_INSTALL_LIBSTDCPP # harfbuzz
++	depends on BR2_TOOLCHAIN_HAS_SYNC_4 # harfbuzz
++	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_4_9 # harfbuzz
++	select BR2_PACKAGE_HARFBUZZ
++	select BR2_PACKAGE_UTF8PROC
++	help
++	  Enables shaping of whole text runs.
++
++comment "run-shaping needs a toolchain w/ C++, gcc >= 4.9"
++	depends on BR2_TOOLCHAIN_HAS_SYNC_4
++	depends on !BR2_INSTALL_LIBSTDCPP || !BR2_TOOLCHAIN_GCC_AT_LEAST_4_9
++
++config BR2_PACKAGE_FCFT_SVG_SUPPORT
++	bool "svg support"
++	help
++	  Enables svg support. This option increases the size of the
++	  library by approximately 55KB.
++
++endif # BR2_PACKAGE_FCFT
++
++comment "fcft needs a glibc or musl toolchain"
++	depends on !(BR2_TOOLCHAIN_USES_GLIBC || BR2_TOOLCHAIN_USES_MUSL)
+diff --git a/package/fcft/fcft.hash b/package/fcft/fcft.hash
+new file mode 100644
+index 0000000000..96d885db1d
+--- /dev/null
++++ b/package/fcft/fcft.hash
+@@ -0,0 +1,3 @@
++# Locally computed
++sha256  904f40d749d198d97c46c5a459cd3c53fe92f008cf1e3e61949f6cf3036a78b7  3.1.6.tar.gz
++sha256  d534a23a31500a0ac958d9634b84f532bd73ff1aca1bb8f7debbcbebc16ff39a  LICENSE
+diff --git a/package/fcft/fcft.mk b/package/fcft/fcft.mk
+new file mode 100644
+index 0000000000..538d8a0748
+--- /dev/null
++++ b/package/fcft/fcft.mk
+@@ -0,0 +1,44 @@
++################################################################################
++#
++# fcft
++#
++################################################################################
++
++FCFT_VERSION = 3.1.6
++FCFT_SOURCE = $(FCFT_VERSION).tar.gz
++FCFT_SITE = https://codeberg.org/dnkl/fcft/archive
++FCFT_LICENSE = MIT
++FCFT_LICENSE_FILES = LICENSE
++FCFT_INSTALL_STAGING = YES
++
++FCFT_DEPENDENCIES = \
++	fontconfig \
++	freetype \
++	pixman \
++	tllist
++
++FCFT_CONF_OPTS = \
++	-Ddocs=disabled \
++	-Dexamples=false
++
++ifeq ($(BR2_PACKAGE_FCFT_GRAPHEME_SHAPING),y)
++FCFT_DEPENDENCIES += harfbuzz
++FCFT_CONF_OPTS += -Dgrapheme-shaping=enabled
++else
++FCFT_CONF_OPTS += -Dgrapheme-shaping=disabled
++endif
++
++ifeq ($(BR2_PACKAGE_FCFT_RUN_SHAPING),y)
++FCFT_DEPENDENCIES += harfbuzz utf8proc
++FCFT_CONF_OPTS += -Drun-shaping=enabled
++else
++FCFT_CONF_OPTS += -Drun-shaping=disabled
++endif
++
++ifeq ($(BR2_PACKAGE_FCFT_SVG_SUPPORT),y)
++FCFT_CONF_OPTS += -Dsvg-backend='nanosvg'
++else
++FCFT_CONF_OPTS += -Dsvg-backend='none'
++endif
++
++$(eval $(meson-package))
+diff --git a/package/foot/Config.in b/package/foot/Config.in
+new file mode 100644
+index 0000000000..b0ec2e3926
+--- /dev/null
++++ b/package/foot/Config.in
+@@ -0,0 +1,37 @@
++config BR2_PACKAGE_FOOT
++	bool "foot"
++	depends on BR2_TOOLCHAIN_USES_GLIBC || BR2_TOOLCHAIN_USES_MUSL # fcft
++	depends on !BR2_STATIC_LIBS # wayland
++	select BR2_PACKAGE_FCFT
++	select BR2_PACKAGE_FONTCONFIG
++	select BR2_PACKAGE_FREETYPE
++	select BR2_PACKAGE_LIBXKBCOMMON
++	select BR2_PACKAGE_PIXMAN
++	select BR2_PACKAGE_TLLIST
++	select BR2_PACKAGE_WAYLAND
++	select BR2_PACKAGE_WAYLAND_PROTOCOLS
++	help
++	  A fast, lightweight and minimalistic Wayland terminal
++	  emulator.
++	  NOTE: foot needs a working UTF-8 locale (BR2_GENERATE_LOCALE)
++
++	  https://codeberg.org/dnkl/foot
++
++if BR2_PACKAGE_FOOT
++
++config BR2_PACKAGE_FOOT_GRAPHEME_CLUSTERING
++	bool "grapheme-clustering"
++	select BR2_PACKAGE_UTF8PROC
++	help
++	  Enables grapheme clustering.
++
++config BR2_PACKAGE_FOOT_THEMES
++	bool "themes"
++	help
++	  Install themes (predefined color schemes)
++
++endif # BR2_PACKAGE_FOOT
++
++comment "foot needs a glibc or musl toolchain w/ dynamic library"
++	depends on !(BR2_TOOLCHAIN_USES_GLIBC || BR2_TOOLCHAIN_USES_MUSL) || \
++		BR2_STATIC_LIBS
+diff --git a/package/foot/foot.hash b/package/foot/foot.hash
+new file mode 100644
+index 0000000000..f3bf0f6058
+--- /dev/null
++++ b/package/foot/foot.hash
+@@ -0,0 +1,3 @@
++# Locally computed
++sha256  8060ec28cbf6e2e3d408665330da4bc48fd094d4f1265d7c58dc75c767463c29  1.16.2.tar.gz
++sha256  d534a23a31500a0ac958d9634b84f532bd73ff1aca1bb8f7debbcbebc16ff39a  LICENSE
+diff --git a/package/foot/foot.mk b/package/foot/foot.mk
+new file mode 100644
+index 0000000000..1595e2a718
+--- /dev/null
++++ b/package/foot/foot.mk
+@@ -0,0 +1,50 @@
++################################################################################
++#
++# foot
++#
++################################################################################
++
++FOOT_VERSION = 1.16.2
++FOOT_SOURCE = $(FOOT_VERSION).tar.gz
++FOOT_SITE = https://codeberg.org/dnkl/foot/archive
++FOOT_LICENSE = MIT
++FOOT_LICENSE_FILES = LICENSE
++FOOT_DEPENDENCIES = \
++	fcft \
++	fontconfig \
++	freetype \
++	libxkbcommon \
++	pixman \
++	tllist \
++	wayland \
++	wayland-protocols
++
++FOOT_CONF_OPTS = \
++	-Ddocs=disabled \
++	-Dtests=false
++
++ifeq ($(BR2_PACKAGE_SYSTEMD),y)
++FOOT_DEPENDENCIES += systemd
++endif
++
++ifeq ($(BR2_PACKAGE_LIBUTEMPTER),y)
++FOOT_DEPENDENCIES += libutempter
++FOOT_CONF_OPTS += -Dutmp-backend='libutempter'
++else
++FOOT_CONF_OPTS += -Dutmp-backend='none'
++endif
++
++ifeq ($(BR2_PACKAGE_FOOT_GRAPHEME_CLUSTERING),y)
++FOOT_DEPENDENCIES += utf8proc
++FOOT_CONF_OPTS += -Dgrapheme-clustering=enabled
++else
++FOOT_CONF_OPTS += -Dgrapheme-clustering=disabled
++endif
++
++ifeq ($(BR2_PACKAGE_FOOT_THEMES),y)
++FOOT_CONF_OPTS += -Dthemes=true
++else
++FOOT_CONF_OPTS += -Dthemes=false
++endif
++
++$(eval $(meson-package))
+diff --git a/package/libutempter/0001-force-symlink-creation.patch b/package/libutempter/0001-force-symlink-creation.patch
+new file mode 100644
+index 0000000000..c30928afd5
+--- /dev/null
++++ b/package/libutempter/0001-force-symlink-creation.patch
+@@ -0,0 +1,36 @@
++From 13e0a4ca67d860bc8f1e3b2ad6a3926758d76b47 Mon Sep 17 00:00:00 2001
++From: Adam Duskett <adam.duskett@amarulasolutions.com>
++Date: Wed, 22 Nov 2023 14:09:13 -0700
++Subject: [PATCH] force symlink creation
++
++Force symlink creation to avoid errors when reinstalling
++
++Upstream: https://github.com/altlinux/libutempter/pull/5
++Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
++---
++ Makefile | 6 +++---
++ 1 file changed, 3 insertions(+), 3 deletions(-)
++
++diff --git a/Makefile b/Makefile
++index 8c90121..1cfc627 100644
++--- a/Makefile
+++++ b/Makefile
++@@ -83,12 +83,12 @@ install:
++ 	$(INSTALL) -p -m644 $(PROJECT).h $(DESTDIR)$(includedir)/
++ 	$(INSTALL) -p -m755 $(SHAREDLIB) $(DESTDIR)$(libdir)/$(SHAREDLIB).$(VERSION)
++ 	$(INSTALL) -p -m644 $(STATICLIB) $(DESTDIR)$(libdir)/
++-	ln -s $(SHAREDLIB).$(VERSION) $(DESTDIR)$(libdir)/$(SONAME)
++-	ln -s $(SONAME) $(DESTDIR)$(libdir)/$(SHAREDLIB)
+++	ln -sf $(SHAREDLIB).$(VERSION) $(DESTDIR)$(libdir)/$(SONAME)
+++	ln -sf $(SONAME) $(DESTDIR)$(libdir)/$(SHAREDLIB)
++ 	$(INSTALL) -p -m644 $(PROJECT).3 $(DESTDIR)$(man3dir)/
++ 	for n in lib$(PROJECT) utempter_add_record utempter_remove_record \
++ 	    utempter_remove_added_record utempter_set_helper; do \
++-		ln -s $(PROJECT).3 $(DESTDIR)$(man3dir)/$$n.3; \
+++		ln -sf $(PROJECT).3 $(DESTDIR)$(man3dir)/$$n.3; \
++ 	done
++ 
++ clean:
++-- 
++2.42.0
++
+diff --git a/package/libutempter/Config.in b/package/libutempter/Config.in
+new file mode 100644
+index 0000000000..5b79c1e44d
+--- /dev/null
++++ b/package/libutempter/Config.in
+@@ -0,0 +1,13 @@
++config BR2_PACKAGE_LIBUTEMPTER
++	bool "libutempter"
++	depends on BR2_TOOLCHAIN_HEADERS_AT_LEAST_4_14
++	depends on !BR2_STATIC_LIBS
++	help
++	  The libutempter library provides interface for terminal
++	  emulators such as screen and xterm to record user
++	  sessions to utmp and wtmp files.
++
++	  http://ftp.altlinux.org/pub/people/ldv/utempter/
++
++comment "libutempter needs a toolchain w/ headers >= 4.14, dynamic library"
++	depends on !BR2_TOOLCHAIN_HEADERS_AT_LEAST_4_14 || BR2_STATIC_LIBS
+diff --git a/package/libutempter/libutempter.hash b/package/libutempter/libutempter.hash
+new file mode 100644
+index 0000000000..53a6c6db63
+--- /dev/null
++++ b/package/libutempter/libutempter.hash
+@@ -0,0 +1,3 @@
++# Locally computed
++sha256  967fef372f391de501843ad87570c6cf5dabd9651f00f1783090fbc12b2a34cb  libutempter-1.2.1.tar.gz
++sha256  ce64d5f7b49ea6d80fdb6d4cdee6839d1a94274f7493dc797c3b55b65ec8e9ed  COPYING
+diff --git a/package/libutempter/libutempter.mk b/package/libutempter/libutempter.mk
+new file mode 100644
+index 0000000000..d51f70049c
+--- /dev/null
++++ b/package/libutempter/libutempter.mk
+@@ -0,0 +1,27 @@
++################################################################################
++#
++# libutempter
++#
++################################################################################
++
++LIBUTEMPTER_VERSION = 1.2.1
++LIBUTEMPTER_SITE = ftp.altlinux.org/pub/people/ldv/utempter
++LIBUTEMPTER_INSTALL_STAGING = YES
++LIBUTEMPTER_LICENSE = LGPL-2.1+
++LIBUTEMPTER_LICENSE_FILES = COPYING
++
++define LIBUTEMPTER_BUILD_CMDS
++	$(TARGET_MAKE_ENV) $(TARGET_CONFIGURE_OPTS) $(MAKE) -C $(@D)
++endef
++
++define LIBUTEMPTER_INSTALL_STAGING_CMDS
++	$(TARGET_MAKE_ENV) $(TARGET_CONFIGURE_OPTS) \
++		$(MAKE) DESTDIR=$(STAGING_DIR) PREFIX=/usr -C $(@D)/ install
++endef
++
++define LIBUTEMPTER_INSTALL_TARGET_CMDS
++	$(TARGET_MAKE_ENV) $(TARGET_CONFIGURE_OPTS) \
++		$(MAKE) DESTDIR=$(TARGET_DIR) PREFIX=/usr -C $(@D)/ install
++endef
++
++$(eval $(generic-package))
+diff --git a/package/sway/Config.in b/package/sway/Config.in
+index 08b6911069..4f6d9fb215 100644
+--- a/package/sway/Config.in
++++ b/package/sway/Config.in
+@@ -21,9 +21,39 @@ config BR2_PACKAGE_SWAY
+ 	select BR2_PACKAGE_XKEYBOARD_CONFIG # runtime
+ 	help
+ 	  i3-compatible Wayland compositor
++	  Note:
++	    The default sway config uses the foot package as the
++	    default terminal. If you plan on using the default
++	    config, it is recommended to select the foot package!
+ 
+ 	  https://github.com/swaywm/sway
+ 
++if BR2_PACKAGE_SWAY
++
++config BR2_PACKAGE_SWAY_SWAYBAR
++	bool "swaybar"
++	select BR2_PACKAGE_DEJAVU
++	select BR2_PACKAGE_JQ if BR2_PACKAGE_BASH_COMPLETION # Runtime
++	select BR2_PACKAGE_DMENU_WAYLAND # Runtime
++	help
++	  Enable support for swaybar
++
++if BR2_PACKAGE_SWAY_SWAYBAR
++
++config BR2_PACKAGE_SWAY_SWAYBAR_TRAY
++	bool "swaybar tray"
++	help
++	  Enable support for swaybar tray
++
++endif # BR2_PACKAGE_SWAY_SWAYBAR
++
++config BR2_PACKAGE_SWAY_SWAYNAG
++	bool "swaynag"
++	help
++	  Enable support for swaynag
++
++endif # BR2_PACKAGE_SWAY
++
+ comment "sway needs systemd, udev, EGL w/ Wayland backend and OpenGL ES support"
+ 	depends on !BR2_PACKAGE_SYSTEMD || \
+ 		!BR2_PACKAGE_HAS_UDEV || \
+diff --git a/package/sway/sway.mk b/package/sway/sway.mk
+index 19f90b8b00..0aad9de712 100644
+--- a/package/sway/sway.mk
++++ b/package/sway/sway.mk
+@@ -11,13 +11,8 @@ SWAY_LICENSE_FILES = LICENSE
+ SWAY_DEPENDENCIES = systemd host-pkgconf wlroots json-c pcre cairo pango
+ SWAY_CONF_OPTS = \
+ 	-Dwerror=false \
+-	-Ddefault-wallpaper=false \
+ 	-Dzsh-completions=false \
+-	-Dbash-completions=false \
+ 	-Dfish-completions=false \
+-	-Dswaybar=false \
+-	-Dswaynag=false \
+-	-Dtray=disabled \
+ 	-Dman-pages=disabled \
+ 	-Dsd-bus-provider=libsystemd
+ 
+@@ -34,4 +29,34 @@ else
+ SWAY_CONF_OPTS += -Dgdk-pixbuf=disabled
+ endif
+ 
++ifeq ($(BR2_PACKAGE_BASH_COMPLETION),y)
++SWAY_CONF_OPTS += -Dbash-completions=true
++else
++SWAY_CONF_OPTS += -Dbash-completions=false
++endif
++
++ifeq ($(BR2_PACKAGE_SWAYBG),y)
++SWAY_CONF_OPTS += -Ddefault-wallpaper=true
++else
++SWAY_CONF_OPTS += -Ddefault-wallpaper=false
++endif
++
++ifeq ($(BR2_PACKAGE_SWAY_SWAYBAR),y)
++SWAY_CONF_OPTS += -Dswaybar=true
++else
++SWAY_CONF_OPTS += -Dswaybar=false
++endif
++
++ifeq ($(BR2_PACKAGE_SWAY_SWAYNAG),y)
++SWAY_CONF_OPTS += -Dswaynag=true
++else
++SWAY_CONF_OPTS += -Dswaynag=false
++endif
++
++ifeq ($(BR2_PACKAGE_SWAY_SWAYBAR_TRAY),y)
++SWAY_CONF_OPTS += -Dtray=enabled
++else
++SWAY_CONF_OPTS += -Dtray=disabled
++endif
++
+ $(eval $(meson-package))
+diff --git a/package/tllist/Config.in b/package/tllist/Config.in
+new file mode 100644
+index 0000000000..879119d13e
+--- /dev/null
++++ b/package/tllist/Config.in
+@@ -0,0 +1,6 @@
++config BR2_PACKAGE_TLLIST
++	bool "tllist"
++	help
++	  A C header file only implementation of a typed linked list.
++
++	  https://codeberg.org/dnkl/tllist
+diff --git a/package/tllist/tllist.hash b/package/tllist/tllist.hash
+new file mode 100644
+index 0000000000..2806d62355
+--- /dev/null
++++ b/package/tllist/tllist.hash
+@@ -0,0 +1,3 @@
++# Locally computed
++sha256  3f3fe2f7433719cec816c63937a7aa36e566bd317763ef46d11562073ab6361d  1.1.0.tar.gz
++sha256  d534a23a31500a0ac958d9634b84f532bd73ff1aca1bb8f7debbcbebc16ff39a  LICENSE
+diff --git a/package/tllist/tllist.mk b/package/tllist/tllist.mk
+new file mode 100644
+index 0000000000..88a28d2427
+--- /dev/null
++++ b/package/tllist/tllist.mk
+@@ -0,0 +1,16 @@
++################################################################################
++#
++# tllist
++#
++################################################################################
++
++TLLIST_VERSION = 1.1.0
++TLLIST_SOURCE = $(TLLIST_VERSION).tar.gz
++TLLIST_SITE = https://codeberg.org/dnkl/tllist/archive
++TLLIST_LICENSE = MIT
++TLLIST_LICENSE_FILES = LICENSE
++# header only
++TLLIST_INSTALL_TARGET = NO
++TLLIST_INSTALL_STAGING = YES
++
++$(eval $(meson-package))
+-- 
+2.43.0
+

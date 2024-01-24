@@ -1,0 +1,74 @@
+From 7eb2effb63548f22a05013f448952dfe2555b66b Mon Sep 17 00:00:00 2001
+From: Adam Duskett <adam.duskett@amarulasolutions.com>
+Date: Tue, 23 Jan 2024 10:35:02 -0700
+Subject: [PATCH] package/wlroot: vulkan renderer depends on vulkan loader
+
+Without the vulkan-loader package present, the configure step fails with the
+following error message:
+```
+Run-time dependency vulkan found: NO (tried pkgconfig and system)
+Message: Install "vulkan" or pass "-Dvulkan=disabled" to disable it.
+```
+
+The above error is due to the lack of the vulkan.pc file provided by the
+vulkan-loader package. A search of autobuild failures containing
+BR2_PACKAGE_WLROOTS=y and BR2_PACKAGE_MESA3D_VULKAN_DRIVER=y shows two build
+failures. However, the failure reasons happened before wlroots could compile.
+One for gerbera-1.10.0 and another for host-rust-1.64.0.
+
+Add a dependency on the vulkan-loader package to resolve the above issue.
+
+Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
+---
+ .checkpackageignore                                           | 1 -
+ .../wlroots/0001-Add-feature-macros-to-more-C-files-.patch    | 4 +++-
+ package/wlroots/wlroots.mk                                    | 4 ++--
+ 3 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/.checkpackageignore b/.checkpackageignore
+index dde9c6311e..a5b40c1f11 100644
+--- a/.checkpackageignore
++++ b/.checkpackageignore
+@@ -1448,7 +1448,6 @@ package/wilc-driver/0005-Fix-cast-warnings.patch Upstream
+ package/wipe/0001-musl.patch Upstream
+ package/wireless_tools/0001-remove-bzero.patch Upstream
+ package/wireshark/0001-cmake-lemon-wipe-CMAKE_-EXE_LINKER_FLAGS-SYSROOT-if-.patch Upstream
+-package/wlroots/0001-Add-feature-macros-to-more-C-files-.patch Upstream
+ package/woff2/0001-CMake-Handle-multiple-libraries-being-returned-for-B.patch Upstream
+ package/wpa_supplicant/0001-build-re-enable-options-for-libwpa_client.so-and-.patch Upstream
+ package/wpa_supplicant/ifupdown.sh Shellcheck
+diff --git a/package/wlroots/0001-Add-feature-macros-to-more-C-files-.patch b/package/wlroots/0001-Add-feature-macros-to-more-C-files-.patch
+index 0ba078708a..0e1ae9d87a 100644
+--- a/package/wlroots/0001-Add-feature-macros-to-more-C-files-.patch
++++ b/package/wlroots/0001-Add-feature-macros-to-more-C-files-.patch
+@@ -5,8 +5,10 @@ Subject: [PATCH] Add feature macros to more C files
+ 
+ These source files use "struct timespec", which is POSIX 1993.09.
+ 
+-Signed-off-by: Paul Cercueil <paul@crapouillou.net>
++Upstream: Rejected (Upstream does not want these workarounds)
++see: https://gitlab.freedesktop.org/wlroots/wlroots/-/merge_requests/2493
+ 
++Signed-off-by: Paul Cercueil <paul@crapouillou.net>
+ [Retrieved from: https://github.com/swaywm/wlroots/pull/2493]
+ Signed-off-by: Fabrice Fontaine <fontaine.fabrice@gmail.com>
+ ---
+diff --git a/package/wlroots/wlroots.mk b/package/wlroots/wlroots.mk
+index bb5c8f497d..fdd2fb8250 100644
+--- a/package/wlroots/wlroots.mk
++++ b/package/wlroots/wlroots.mk
+@@ -41,9 +41,9 @@ else
+ WLROOTS_CONF_OPTS += -Dxwayland=disabled
+ endif
+ 
+-ifeq ($(BR2_PACKAGE_MESA3D_VULKAN_DRIVER),y)
++ifeq ($(BR2_PACKAGE_MESA3D_VULKAN_DRIVER)$(BR2_PACKAGE_VULKAN_LOADER),yy)
+ WLROOTS_RENDERERS += vulkan
+-WLROOTS_DEPENDENCIES += mesa3d
++WLROOTS_DEPENDENCIES += mesa3d vulkan-loader
+ endif
+ 
+ WLROOTS_CONF_OPTS += \
+-- 
+2.43.0
+
