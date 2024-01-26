@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+flutter-pi --profile /usr/share/flutter/gallery/profile/ --observatory-host=0.0.0.0 --observatory-port=1234 > /tmp/observatory
