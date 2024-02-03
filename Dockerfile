@@ -84,6 +84,7 @@ ARG BUILDROOT_DIR
 ARG BUILDROOT_PATCH_DIR
 ARG BUILDROOT_VERSION=2023.11.1
 ARG BUILDROOT_BRANCH=master
+ARG BUILDROOT_COMMIT
 ARG UID
 ARG GID
 
@@ -98,6 +99,11 @@ RUN /bin/bash; \
   if [ $BUILDROOT_VERSION = "git" ]; then \
     echo "Cloning Buildroot on branch ${BUILDROOT_BRANCH}"; \
     git clone git://git.buildroot.net/buildroot /home/${BUILDROOT_USER}/buildroot -b ${BUILDROOT_BRANCH}; \
+    if [ -n $BUILDROOT_COMMIT ]; then \
+      cd /home/${BUILDROOT_USER}/buildroot; \
+      git checkout ${BUILDROOT_COMMIT}; \
+      cd -; \
+    fi; \
   else \
     wget https://buildroot.org/downloads/buildroot-${BUILDROOT_VERSION}.tar.xz -O /home/${BUILDROOT_USER}/buildroot.tar.xz; \
     mkdir -p /home/${BUILDROOT_USER}/${BUILDROOT_DIR}; \
