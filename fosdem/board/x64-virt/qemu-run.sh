@@ -55,6 +55,7 @@ run_virt() {
     -bios "${OVMF}" \
     -drive file="${DISK_IMG}",if=virtio,format=raw \
     -net nic,model=virtio \
+    -netdev bridge,br=virbr0,id=net0,helper=/usr/libexec/qemu-bridge-helper -device virtio-net-pci,netdev=net0 \
     -net user \
     -device virtio-vga-gl \
     -display gtk,gl=on,show-cursor=on \
