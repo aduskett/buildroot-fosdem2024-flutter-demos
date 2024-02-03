@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
+set -x
 
-flutter-pi --profile /usr/share/flutter/gallery/profile/ --observatory-host=0.0.0.0 --observatory-port=1234 > /tmp/observatory
+flutter-pi --profile /usr/share/flutter/gallery/profile/ --vm-service-host=0.0.0.0 --vm-service-port=1234 > /tmp/vm-service
