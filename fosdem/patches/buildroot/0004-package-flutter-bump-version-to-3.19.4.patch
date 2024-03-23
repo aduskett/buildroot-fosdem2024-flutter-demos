@@ -1,0 +1,114 @@
+From b8bfeec1ad0a68f92d2fab8b345bf1e5e8285338 Mon Sep 17 00:00:00 2001
+From: Adam Duskett <adam.duskett@amarulasolutions.com>
+Date: Sat, 23 Mar 2024 14:59:44 -0600
+Subject: [PATCH] package/flutter: bump version to 3.19.4
+
+Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
+---
+ ...on-dependency-if-unit-tests-are-disa.patch | 26 +++++++++++++++++++
+ package/flutter-engine/flutter-engine.mk      | 11 ++++++--
+ package/flutter-sdk-bin/flutter-sdk-bin.hash  |  2 +-
+ package/flutter-sdk-bin/flutter-sdk-bin.mk    |  2 +-
+ 4 files changed, 37 insertions(+), 4 deletions(-)
+ create mode 100644 package/flutter-engine/0005-skip-configuration-dependency-if-unit-tests-are-disa.patch
+
+diff --git a/package/flutter-engine/0005-skip-configuration-dependency-if-unit-tests-are-disa.patch b/package/flutter-engine/0005-skip-configuration-dependency-if-unit-tests-are-disa.patch
+new file mode 100644
+index 0000000000..bf0f48602d
+--- /dev/null
++++ b/package/flutter-engine/0005-skip-configuration-dependency-if-unit-tests-are-disa.patch
+@@ -0,0 +1,26 @@
++From 2252a85e59669b5826019f60a98b7a69939dacfd Mon Sep 17 00:00:00 2001
++From: Adam Duskett <adam.duskett@amarulasolutions.com>
++Date: Tue, 5 Mar 2024 11:21:25 -0700
++Subject: [PATCH] Skip configuration dependency if unit tests are disabled.
++
++Signed-off-by: Adam Duskett <adam.duskett@amarulasolutions.com>
++---
++ flutter/testing/BUILD.gn | 2 +-
++ 1 file changed, 1 insertion(+), 1 deletion(-)
++
++diff --git a/flutter/testing/BUILD.gn b/flutter/testing/BUILD.gn
++index 9eac29452..a7d094695 100644
++--- a/flutter/testing/BUILD.gn
+++++ b/flutter/testing/BUILD.gn
++@@ -51,7 +51,7 @@ source_set("testing") {
++ 
++   sources = [ "run_all_unittests.cc" ]
++ 
++-  if (is_linux) {
+++  if (enable_unittests && is_linux) {
++     # So that we can call gtk_init in main().
++     configs += [ "//flutter/shell/platform/linux/config:gtk" ]
++   }
++-- 
++2.44.0
++
+diff --git a/package/flutter-engine/flutter-engine.mk b/package/flutter-engine/flutter-engine.mk
+index d08274f546..1384b3dda2 100644
+--- a/package/flutter-engine/flutter-engine.mk
++++ b/package/flutter-engine/flutter-engine.mk
+@@ -21,7 +21,7 @@
+ #
+ # There is no hash provided, as the gn binary (used for configuration) relies
+ # on the .git directories. As such, a reproducible tarball is not possible.
+-FLUTTER_ENGINE_VERSION = 3.16.8
++FLUTTER_ENGINE_VERSION = 3.19.4
+ 
+ # There is nothing for Buildroot to download. This is handled by gclient.
+ FLUTTER_ENGINE_SITE =
+@@ -83,7 +83,8 @@ FLUTTER_ENGINE_CONF_OPTS = \
+ 	--target-os linux \
+ 	--target-sysroot $(STAGING_DIR) \
+ 	--target-toolchain $(FLUTTER_ENGINE_CLANG_PATH) \
+-	--target-triple $(FLUTTER_ENGINE_TARGET_TRIPPLE)
++	--target-triple $(FLUTTER_ENGINE_TARGET_TRIPPLE) \
++	$(if $(VERBOSE),--verbose)
+ 
+ ifeq ($(BR2_arm)$(BR2_armeb),y)
+ FLUTTER_ENGINE_CONF_OPTS += \
+@@ -154,6 +155,9 @@ else
+ define FLUTTER_ENGINE_VULKAN_X11_SUPPORT_FIXUP
+ 	$(SED) "s%vulkan_use_x11.*%vulkan_use_x11 = false%g" -i \
+ 		$(@D)/build_overrides/vulkan_headers.gni
++
++	$(SED) "s%ozone_platform_x11.*%ozone_platform_x11 = false%g" \
++		$(@D)/build/config/BUILDCONFIG.gn
+ endef
+ FLUTTER_ENGINE_PRE_CONFIGURE_HOOKS += FLUTTER_ENGINE_VULKAN_X11_SUPPORT_FIXUP
+ endif
+@@ -164,6 +168,9 @@ else
+ define FLUTTER_ENGINE_VULKAN_WAYLAND_SUPPORT_FIXUP
+ 	$(SED) "s%vulkan_use_wayland.*%vulkan_use_wayland = false%g" \
+ 		$(@D)/build_overrides/vulkan_headers.gni
++
++	$(SED) "s%ozone_platform_wayland.*%ozone_platform_wayland = false%g" \
++		$(@D)/build/config/BUILDCONFIG.gn
+ endef
+ FLUTTER_ENGINE_PRE_CONFIGURE_HOOKS += FLUTTER_ENGINE_VULKAN_WAYLAND_SUPPORT_FIXUP
+ endif
+diff --git a/package/flutter-sdk-bin/flutter-sdk-bin.hash b/package/flutter-sdk-bin/flutter-sdk-bin.hash
+index 48c9c7d7e3..1102c50cc6 100644
+--- a/package/flutter-sdk-bin/flutter-sdk-bin.hash
++++ b/package/flutter-sdk-bin/flutter-sdk-bin.hash
+@@ -1,3 +1,3 @@
+ # Locally calculated
+-sha256  7cb12032cf615a92a7bc9042100f3f2af62df7df3ca3bee27f4b153fe218b239  flutter_linux_3.16.8-stable.tar.xz
++sha256  66adfe6b6559a2e2f1fdbf89c938d0af53add3860c854c79dbbd5452f5d2290a  flutter_linux_3.19.4-stable.tar.xz
+ sha256  a598db94b6290ffbe10b5ecf911057b6a943351c727fdda9e5f2891d68700a20  LICENSE
+diff --git a/package/flutter-sdk-bin/flutter-sdk-bin.mk b/package/flutter-sdk-bin/flutter-sdk-bin.mk
+index 0d9a44596d..f8453c3090 100644
+--- a/package/flutter-sdk-bin/flutter-sdk-bin.mk
++++ b/package/flutter-sdk-bin/flutter-sdk-bin.mk
+@@ -4,7 +4,7 @@
+ #
+ ################################################################################
+ 
+-FLUTTER_SDK_BIN_VERSION = 3.16.8
++FLUTTER_SDK_BIN_VERSION = 3.19.4
+ FLUTTER_SDK_BIN_SITE = https://storage.googleapis.com/flutter_infra_release/releases/stable/linux
+ FLUTTER_SDK_BIN_SOURCE = flutter_linux_$(FLUTTER_SDK_BIN_VERSION)-stable.tar.xz
+ FLUTTER_SDK_BIN_LICENSE = BSD-3-Clause
+-- 
+2.44.0
+

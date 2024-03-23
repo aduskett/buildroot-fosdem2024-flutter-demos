@@ -1,0 +1,6 @@
+# For the love of god do not use this in a production system.
+PermitRootLogin yes
+AuthorizedKeysFile	.ssh/authorized_keys
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+Subsystem	sftp	/usr/libexec/sftp-server

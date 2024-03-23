@@ -1,0 +1,29 @@
+{
+  "environment": [{
+    "buildroot_dir_name": "buildroot",
+    "user": "br-user"
+  }],
+  "configs": [{
+    "defconfig": "rpi5_flutter_demo_defconfig",
+    "build": true,
+    "clean": false,
+    "legal_info": false,
+    "remove": false,
+    "skip": false,
+    "verbose": true,
+    "external_trees": [{
+      "name": "fosdem"
+    }]
+  },{
+    "defconfig": "x64_virt_flutter_demo_defconfig",
+    "build": true,
+    "clean": false,
+    "legal_info": true,
+    "remove": false,
+    "skip": false,
+    "verbose": false,
+    "external_trees": [{
+      "name": "fosdem"
+    }]
+  }]
+}
